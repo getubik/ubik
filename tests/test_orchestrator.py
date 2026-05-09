@@ -23,6 +23,7 @@ from ubik.adapters.executor import (
     ExecutorOutcome,
     ExecutorTask,
 )
+from ubik.adapters.verifier import VerifyOutcome, VerifyResult, VerifyTask
 from ubik.core.notebook import Notebook
 from ubik.core.orchestrator import Orchestrator
 from ubik.core.proposal import Proposal, ProposalState, ProposalStore
@@ -53,6 +54,31 @@ class FakeBridge:
 
 
 @dataclass
+class FakeVerifier:
+    name: str = "fake-github"
+    outcome: VerifyOutcome = VerifyOutcome.OPENED
+    last_task: VerifyTask | None = None
+
+    async def verify(self, task: VerifyTask) -> VerifyResult:
+        self.last_task = task
+        if self.outcome == VerifyOutcome.OPENED:
+            return VerifyResult(
+                outcome=VerifyOutcome.OPENED,
+                proposal_id=task.proposal_id,
+                branch=task.branch,
+                pr_url=f"https://github.com/getubik/ubik/pull/42",
+                pr_number=42,
+                notes="ok",
+            )
+        return VerifyResult(
+            outcome=self.outcome,
+            proposal_id=task.proposal_id,
+            branch=task.branch,
+            notes="simulated failure",
+        )
+
+
+@dataclass
 class FakeExecutor:
     name: str = "fake-aider"
     outcome: ExecutorOutcome = ExecutorOutcome.SUCCESS
@@ -76,13 +102,18 @@ class FakeExecutor:
 # ── Helpers ─────────────────────────────────────────────────────────────
 
 
-def _make_setup(tmp_path: Path, executor_outcome=ExecutorOutcome.SUCCESS):
+def _make_setup(
+    tmp_path: Path,
+    executor_outcome=ExecutorOutcome.SUCCESS,
+    verifier: FakeVerifier | None = None,
+):
     notebook = Notebook(tmp_path)
     store = ProposalStore(tmp_path)
     bridge = FakeBridge()
     executor = FakeExecutor(outcome=executor_outcome)
     orch = Orchestrator(
-        store=store, notebook=notebook, bridge=bridge, executor=executor
+        store=store, notebook=notebook, bridge=bridge,
+        executor=executor, verifier=verifier,
     )
 
     proposal = Proposal.new(
@@ -225,3 +256,60 @@ async def test_unknown_proposal_id_is_ignored(tmp_path: Path) -> None:
     # No exceptions, no side effects.
     assert bridge.notifies == []
     assert bridge.edits == []
+
+
+# ── Verifier integration ────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_approve_with_verifier_opens_pr(tmp_path: Path) -> None:
+    verifier = FakeVerifier()
+    orch, store, bridge, _, proposal = _make_setup(tmp_path, verifier=verifier)
+    await orch.publish(proposal.id)
+
+    await orch.on_approval(ApprovalEvent(
+        proposal_id=proposal.id, decision=Decision.APPROVED, by="i", at="t",
+    ))
+
+    after = store.load(proposal.id)
+    assert after.state == ProposalState.PR_OPENED
+    assert after.pr_url == "https://github.com/getubik/ubik/pull/42"
+    # Two notifies: post-execution summary + post-verify summary.
+    assert any("PR ready" in n.title for n in bridge.notifies)
+
+
+@pytest.mark.asyncio
+async def test_approve_with_verifier_failure_keeps_ready_state(tmp_path: Path) -> None:
+    verifier = FakeVerifier(outcome=VerifyOutcome.PUSH_FAILED)
+    orch, store, bridge, _, proposal = _make_setup(tmp_path, verifier=verifier)
+    await orch.publish(proposal.id)
+
+    await orch.on_approval(ApprovalEvent(
+        proposal_id=proposal.id, decision=Decision.APPROVED, by="i", at="t",
+    ))
+
+    after = store.load(proposal.id)
+    # Stays at READY_FOR_PR (executor done) but no PR URL.
+    assert after.state == ProposalState.READY_FOR_PR
+    assert after.pr_url is None
+    assert any("PR failed" in n.title for n in bridge.notifies)
+
+
+@pytest.mark.asyncio
+async def test_executor_failure_skips_verifier(tmp_path: Path) -> None:
+    verifier = FakeVerifier()
+    orch, store, _, _, proposal = _make_setup(
+        tmp_path,
+        executor_outcome=ExecutorOutcome.FAILED,
+        verifier=verifier,
+    )
+    await orch.publish(proposal.id)
+
+    await orch.on_approval(ApprovalEvent(
+        proposal_id=proposal.id, decision=Decision.APPROVED, by="i", at="t",
+    ))
+
+    after = store.load(proposal.id)
+    assert after.state == ProposalState.EXECUTION_FAILED
+    # Verifier should not have been called.
+    assert verifier.last_task is None
