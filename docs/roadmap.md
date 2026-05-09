@@ -2,19 +2,23 @@
 
 ## Sprint 1 — Skeleton + Core (week 1)
 
-- [x] Repo skeleton (this commit)
-- [ ] LLM adapter (litellm wrapper, GLM/Z.AI default)
+- [x] Repo skeleton (commit 71b8069)
+- [x] 2026 stack lock-in: uv + ruff + ty + claude-agent-sdk + pydantic-ai + OTel
+- [ ] LLM adapter (litellm wrapper, GLM/Z.AI default; pydantic-ai agent loop on top)
 - [ ] Notebook (markdown writer + JSON manifest)
 - [ ] Researcher single-shot mode (`ubik audit`)
 - [ ] First end-to-end test: audit a small repo, dump report
+- [ ] OpenTelemetry GenAI instrumentation baseline (no backend yet, just spans)
 
 ## Sprint 2 — Adapters + MCP (week 2)
 
-- [ ] Executor adapter: Aider + Claude Code (Z.AI shim)
+- [ ] Executor adapter: Claude Agent SDK (Python, Z.AI shim) primary
+- [ ] Executor adapter: Aider (subprocess) secondary
 - [ ] Bridge adapter: Telegram with inline keyboard
 - [ ] Verifier adapter: GitHub PR + status checks
-- [ ] MCP server (stdio transport)
-- [ ] Worktree isolation, sandbox enforcement
+- [ ] MCP server (stdio + Streamable HTTP transports)
+- [ ] MCP Server Card (`.well-known/mcp-server-card`) for registry discovery
+- [ ] Worktree isolation, sandbox network allowlist (claude-agent-sdk native)
 
 ## Sprint 3 — GYIBB integration + Public release (week 3)
 

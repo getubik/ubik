@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling>=1.18"]
-build-backend = "hatchling.build"
+requires = ["uv_build>=0.5"]
+build-backend = "uv_build"
 
 [project]
 name = "ubik"
@@ -14,7 +14,8 @@ authors = [
 ]
 keywords = [
     "ai", "agent", "code-review", "mcp", "model-context-protocol",
-    "autonomous", "developer-tools", "claude-code", "aider"
+    "autonomous", "developer-tools", "claude-code", "claude-agent-sdk",
+    "aider", "openhands", "glm", "z-ai",
 ]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -29,41 +30,100 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
 ]
 dependencies = [
-    # CLI
-    "typer>=0.12",
-    "rich>=13.7",
+    # CLI ────────────────────────────────────────────────────────────────
+    "typer>=0.15",
+    "rich>=13.9",
 
-    # LLM (vendor-agnostic)
-    "litellm>=1.50",
+    # LLM — vendor-agnostic dispatch ────────────────────────────────────
+    # litellm covers 100+ providers (Z.AI / OpenAI / Anthropic / Bedrock /
+    # Gemini / local). Pydantic AI sits on top for type-safe agent loops
+    # with first-class OpenTelemetry instrumentation (the GenAI semantic
+    # convention is now the industry default in 2026).
+    "litellm>=1.60",
+    "pydantic-ai>=0.1",
 
-    # Config + I/O
+    # Config + I/O ───────────────────────────────────────────────────────
     "pyyaml>=6.0",
-    "pydantic>=2.7",
+    "pydantic>=2.9",
 
-    # Async + HTTP
-    "httpx>=0.27",
-    "anyio>=4.4",
+    # Async + HTTP ───────────────────────────────────────────────────────
+    "httpx>=0.28",
+    "anyio>=4.6",
 
-    # MCP server (Anthropic SDK)
-    # NOTE: optional install via `pip install ubik[mcp]` once it's stable
+    # Observability — OpenTelemetry GenAI semantic conventions ──────────
+    # OTel is the portable instrumentation layer; backend swap is config.
+    "opentelemetry-api>=1.30",
+    "opentelemetry-sdk>=1.30",
+    "opentelemetry-exporter-otlp-proto-http>=1.30",
 ]
 
 [project.optional-dependencies]
+# ── Executors ──────────────────────────────────────────────────────────
+# Pluggable code-modifying agents. Pick one (or several) per project.
+claude-agent = [
+    # Anthropic's official Python SDK for the Claude Agent SDK
+    # (formerly Claude Code SDK — renamed Feb-Mar 2026).
+    # Multi-agent orchestration, advisor tool, sandbox network allowlists,
+    # session-store streaming all native here.
+    "claude-agent-sdk>=0.1",
+]
+aider = [
+    # Aider is invoked as a subprocess; we shell out, no Python pin.
+    # This extra exists so `pip install ubik[aider]` checks for it on
+    # PATH and prints a friendlier error if it's missing.
+]
+openhands = [
+    # OpenHands runs as a separate service (Docker or REST API). Only
+    # the client wrapper lives here.
+    "httpx>=0.28",
+]
+
+# ── MCP server ─────────────────────────────────────────────────────────
 mcp = [
-    "mcp>=1.0",
+    # Anthropic Python MCP SDK. Supports stdio, HTTP+SSE, and the new
+    # Streamable HTTP transport (with OAuth 2.1).
+    "mcp>=1.5",
 ]
+
+# ── Bridges ────────────────────────────────────────────────────────────
 telegram = [
-    "python-telegram-bot>=21.0",
+    "python-telegram-bot>=21.7",
 ]
+slack = [
+    "slack-sdk>=3.30",
+]
+
+# ── Notebook backends ──────────────────────────────────────────────────
+postgres = [
+    # For multi-project semantic search across notebook entries.
+    # pgvector + asyncpg gives us sub-100ms similarity queries on
+    # 100k+ markdown documents.
+    "asyncpg>=0.30",
+    "pgvector>=0.3",
+    "sentence-transformers>=3.3",
+]
+
+# ── Observability backends ─────────────────────────────────────────────
+langfuse = [
+    # Open-source LLM observability with OTel ingestion. Self-hostable.
+    "langfuse>=2.55",
+]
+
+# ── Convenience meta-extras ────────────────────────────────────────────
 all = [
-    "ubik[mcp,telegram]",
+    "ubik[claude-agent,mcp,telegram,langfuse]",
+]
+all-plus = [
+    "ubik[claude-agent,aider,openhands,mcp,telegram,slack,postgres,langfuse]",
 ]
 dev = [
-    "pytest>=8",
-    "pytest-asyncio>=0.23",
+    "pytest>=8.3",
+    "pytest-asyncio>=0.24",
     "pytest-cov>=5",
-    "ruff>=0.6",
-    "mypy>=1.10",
+    "ruff>=0.8",
+    # ty is Astral's new type checker (mypy alternative). Still pre-1.0
+    # in mid-2026 but fast enough that we use it for CI.
+    "ty>=0.0.1a3 ; python_version >= '3.10'",
 ]
 
 [project.urls]
@@ -71,21 +131,48 @@ Homepage = "https://github.com/getubik/ubik"
 Documentation = "https://github.com/getubik/ubik#readme"
 Issues = "https://github.com/getubik/ubik/issues"
 Source = "https://github.com/getubik/ubik"
+Changelog = "https://github.com/getubik/ubik/blob/main/CHANGELOG.md"
 
 [project.scripts]
 ubik = "ubik.cli:main"
 
-[tool.hatch.build.targets.wheel]
-packages = ["ubik"]
+# ─── uv build backend ──────────────────────────────────────────────────
+# uv_build is Astral's native build backend — fast, zero-config, and
+# tightly integrated with `uv build` / `uv publish`. Replaces hatchling
+# for pure-Python projects (which Ubik is).
+[tool.uv.build-backend]
+module-name = "ubik"
 
+# ─── ruff (lint + format, replaces black/isort/flake8) ────────────────
 [tool.ruff]
 line-length = 100
 target-version = "py310"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "W", "UP", "B", "C4", "SIM"]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "I",    # isort
+    "N",    # pep8-naming
+    "W",    # pycodestyle warnings
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+]
 ignore = ["E501"]  # line length is handled by formatter
 
+[tool.ruff.format]
+# 99.9% Black-compatible. Keep the default — no preview style.
+
+# ─── ty (type checker, Astral's mypy alternative) ─────────────────────
+[tool.ty]
+python = "3.10"
+# More config knobs come online as ty matures. Default strictness is
+# already useful in late 2026.
+
+# ─── pytest ────────────────────────────────────────────────────────────
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
