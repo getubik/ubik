@@ -1,6 +1,6 @@
 [build-system]
-requires = ["uv_build>=0.5"]
-build-backend = "uv_build"
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
 
 [project]
 name = "ubik"
@@ -136,12 +136,12 @@ Changelog = "https://github.com/getubik/ubik/blob/main/CHANGELOG.md"
 [project.scripts]
 ubik = "ubik.cli:main"
 
-# ─── uv build backend ──────────────────────────────────────────────────
-# uv_build is Astral's native build backend — fast, zero-config, and
-# tightly integrated with `uv build` / `uv publish`. Replaces hatchling
-# for pure-Python projects (which Ubik is).
-[tool.uv.build-backend]
-module-name = "ubik"
+# ─── hatchling build backend ──────────────────────────────────────────
+# We tried uv_build but it defaults to a `src/` layout and forcing the
+# flat layout adds friction. Hatchling is hassle-free for pure-Python
+# projects with the existing top-level package directory.
+[tool.hatch.build.targets.wheel]
+packages = ["ubik"]
 
 # ─── ruff (lint + format, replaces black/isort/flake8) ────────────────
 [tool.ruff]
