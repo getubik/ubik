@@ -1,0 +1,44 @@
+[
+  {
+    "slug": "2026-05-09-pssst-audit-ubik",
+    "kind": "audit",
+    "project": "Ubik",
+    "title": "Pssst! Audit · Ubik",
+    "summary": "- The `audit` command is the only live surface; `run`, `mcp`, and `init` are stubs with `TODO` comments. Anyone installing from `main` gets three dead subcommands. - `asyncio.run()` inside a sync Typer handler will hang or throw on Windows …",
+    "created_at": "2026-05-09T16:50:49.737791+00:00",
+    "body_path": "audit/2026-05-09-pssst-audit-ubik.md",
+    "severity": null,
+    "tags": [
+      "audit",
+      "single-shot"
+    ]
+  },
+  {
+    "slug": "2026-05-09-pssst-audit-ubik",
+    "kind": "audit",
+    "project": "Ubik",
+    "title": "Pssst! Audit · Ubik",
+    "summary": "- Only `ubik audit` is live — `run` and `mcp` are stubs that print a message and exit. - `CHANGELOG.md` is referenced from `pyproject.toml` but doesn't exist; the link 404s. - Bare `asyncio.run()` in the CLI will raise if ever called inside…",
+    "created_at": "2026-05-09T17:04:17.531026+00:00",
+    "body_path": "audit/2026-05-09-pssst-audit-ubik.md",
+    "severity": null,
+    "tags": [
+      "audit",
+      "single-shot"
+    ]
+  },
+  {
+    "slug": "2026-05-09-pssst-audit-ubik",
+    "kind": "audit",
+    "project": "Ubik",
+    "title": "Pssst! Audit · Ubik",
+    "summary": "- **`cli.py` is cut off mid-expression** in the `--notify` path — the only non-stub command has a broken tail. - **Two of three CLI commands are stubs** (`run`, `mcp` print \"not implemented\"). The project's own `audit` command is the only f…",
+    "created_at": "2026-05-09T17:08:07.030445+00:00",
+    "body_path": "audit/2026-05-09-pssst-audit-ubik.md",
+    "severity": null,
+    "tags": [
+      "audit",
+      "single-shot"
+    ]
+  }
+]

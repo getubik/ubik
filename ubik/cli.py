@@ -113,6 +113,11 @@ def audit(
     max_tokens: int = typer.Option(
         8000, "--max-tokens", help="Cap on the model's reply length"
     ),
+    notify: Optional[str] = typer.Option(
+        None,
+        "--notify",
+        help="After audit, push a digest to a bridge: 'telegram' (uses TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID env vars).",
+    ),
 ) -> None:
     """One-shot codebase audit.
 
@@ -179,6 +184,44 @@ def audit(
     console.print("[dim]── preview (first 30 lines) ──[/dim]")
     console.print(head)
     console.print("[dim]── /preview ──[/dim]")
+
+    # ── optional bridge notify ──────────────────────────────────────────
+    if notify:
+        from ubik.adapters.bridge import NotifyMessage, Severity
+        from ubik.core.summarize import digest_audit, render_telegram_body
+
+        digest = digest_audit(result.markdown, fallback_title=result.entry.title)
+
+        # Severity = highest individual finding severity, else low.
+        sev = Severity.LOW
+        for level in (Severity.CRITICAL, Severity.HIGH, Severity.MEDIUM):
+            if digest.severities.get(level.value, 0) > 0:
+                sev = level
+                break
+
+        body = render_telegram_body(digest)
+        msg = NotifyMessage(
+            title=digest.title,
+            body_markdown=body,
+            footer=f"ubik audit · {result.entry.project} · "
+                   f"in={result.input_tokens} out={result.output_tokens} "
+                   f"thinking={result.thinking_tokens}",
+            severity=sev,
+            tags=["audit"],
+        )
+
+        if notify == "telegram":
+            from ubik.adapters.bridge.telegram import telegram_from_env
+            try:
+                bridge = telegram_from_env()
+            except RuntimeError as e:
+                console.print(f"[red]notify=telegram failed: {e}[/red]")
+                raise typer.Exit(3) from e
+            asyncio.run(bridge.notify(msg))
+            console.print(f"[green]→ Telegram notified[/green] (chat id from env)")
+        else:
+            console.print(f"[red]unknown --notify target: {notify}[/red]")
+            raise typer.Exit(4)
 
 
 @app.command()
