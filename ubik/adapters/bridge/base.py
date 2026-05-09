@@ -53,6 +53,38 @@ class NotifyMessage:
     tags: list[str] = field(default_factory=list)
 
 
+@dataclass(slots=True)
+class ProposalMessage:
+    """A proposal pushed to the human with inline-keyboard approval buttons."""
+
+    proposal_id: str
+    """The store key — bridges round-trip this in callback data."""
+
+    title: str
+    body_markdown: str
+    footer: str | None = None
+    severity: Severity = Severity.MEDIUM
+    tags: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
+class ApprovalEvent:
+    """Inbound — the user tapped a button."""
+
+    proposal_id: str
+    decision: Decision
+    """APPROVED / REJECTED / REFINE."""
+
+    by: str = ""
+    """Who tapped — chat_id or username."""
+
+    at: str = ""
+    """ISO timestamp the bridge stamped."""
+
+    note: str = ""
+    """Free text for refine, otherwise empty."""
+
+
 class Bridge(Protocol):
     """The minimal contract a bridge implementation must satisfy."""
 
@@ -61,4 +93,14 @@ class Bridge(Protocol):
 
     async def notify(self, message: NotifyMessage) -> None:
         """Push a one-shot message. No reply path needed."""
+        ...
+
+    async def propose(self, message: ProposalMessage) -> dict[str, str]:
+        """Push a proposal with inline approval buttons.
+
+        Returns a dict of bridge-specific refs (e.g.
+        ``{"chat_id": "...", "message_id": "..."}``) to stash on the
+        Proposal so we can edit/delete the message later when the user
+        responds.
+        """
         ...

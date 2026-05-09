@@ -13,15 +13,17 @@ Why direct httpx instead of python-telegram-bot v21+:
 """
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import re
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 import httpx
 
-from .base import Bridge, NotifyMessage, Severity
+from .base import ApprovalEvent, Bridge, Decision, NotifyMessage, ProposalMessage, Severity
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +71,88 @@ class TelegramBridge(Bridge):
     async def notify(self, message: NotifyMessage) -> None:
         """Push the message to every configured chat. Errors per-chat are logged."""
         text = self._render(message)
+        await self._send_to_all(text=text)
 
+    async def propose(self, message: ProposalMessage) -> dict[str, str]:
+        """Push a proposal with ✅ / 👁 / ❌ inline buttons.
+
+        Telegram callback_data fires back at our long-poll loop with the
+        proposal id + decision verb encoded as ``ubik:<verb>:<id>``.
+        """
+        nm = NotifyMessage(
+            title=message.title,
+            body_markdown=message.body_markdown,
+            footer=message.footer,
+            severity=message.severity,
+            tags=message.tags,
+        )
+        text = self._render(nm)
+
+        keyboard = {
+            "inline_keyboard": [[
+                {"text": "✅ Apply",   "callback_data": f"ubik:approve:{message.proposal_id}"},
+                {"text": "👁 Diff",    "callback_data": f"ubik:diff:{message.proposal_id}"},
+                {"text": "❌ Reject",  "callback_data": f"ubik:reject:{message.proposal_id}"},
+            ]]
+        }
+
+        # Send to the FIRST chat only — proposals are routed to the
+        # primary approver. Notify (broadcast) keeps the multi-chat
+        # behaviour. Returns the message refs we'll need to edit later.
+        primary = self.config.chat_ids[0]
+        refs: dict[str, str] = {}
+
+        async with httpx.AsyncClient(timeout=15) as client:
+            resp = await client.post(
+                f"{self._endpoint}/sendMessage",
+                json={
+                    "chat_id": primary,
+                    "text": text,
+                    "parse_mode": self.config.parse_mode,
+                    "disable_web_page_preview": True,
+                    "reply_markup": keyboard,
+                },
+            )
+            if resp.status_code != 200:
+                logger.warning(
+                    "Telegram propose send failed (chat=%s, status=%d): %s",
+                    primary, resp.status_code, resp.text[:300],
+                )
+                return refs
+            data = resp.json()
+            result = data.get("result", {})
+            refs = {
+                "chat_id": str(primary),
+                "message_id": str(result.get("message_id", "")),
+            }
+            logger.info("Telegram proposal sent → chat=%s msg=%s",
+                        primary, refs.get("message_id"))
+        return refs
+
+    async def edit_message(
+        self,
+        chat_id: str | int,
+        message_id: str | int,
+        new_text: str,
+        *,
+        keep_keyboard: bool = False,
+    ) -> bool:
+        """Replace a previously-sent message's body. Used to lock proposals
+        once the user has acted (so they can't tap twice)."""
+        async with httpx.AsyncClient(timeout=15) as client:
+            payload: dict[str, Any] = {
+                "chat_id": chat_id,
+                "message_id": int(message_id),
+                "text": new_text,
+                "parse_mode": self.config.parse_mode,
+                "disable_web_page_preview": True,
+            }
+            if not keep_keyboard:
+                payload["reply_markup"] = {"inline_keyboard": []}
+            resp = await client.post(f"{self._endpoint}/editMessageText", json=payload)
+            return resp.status_code == 200
+
+    async def _send_to_all(self, *, text: str) -> None:
         async with httpx.AsyncClient(timeout=15) as client:
             for chat_id in self.config.chat_ids:
                 try:
@@ -83,7 +166,6 @@ class TelegramBridge(Bridge):
                         },
                     )
                     if resp.status_code != 200:
-                        # Telegram returns descriptive errors in the body.
                         logger.warning(
                             "Telegram send failed (chat=%s, status=%d): %s",
                             chat_id, resp.status_code, resp.text[:200],
@@ -92,6 +174,122 @@ class TelegramBridge(Bridge):
                         logger.info("Telegram notify sent → chat=%s", chat_id)
                 except httpx.HTTPError as e:
                     logger.warning("Telegram notify network error (chat=%s): %s", chat_id, e)
+
+    # ── inbound: long-poll callbacks ─────────────────────────────────────
+
+    async def poll_approvals(
+        self,
+        *,
+        on_event,
+        offset_state_path: Path | None = None,
+        timeout: int = 25,
+    ) -> None:
+        """Long-poll Telegram for callback_query events forever.
+
+        ``on_event`` is awaited with each ApprovalEvent. ``offset_state_path``
+        is a small file we use to remember the last update_id between
+        restarts (so we don't reprocess the same tap twice).
+
+        Run this from the orchestrator main loop. On any HTTP error we
+        backoff then retry — keeps running across transient outages.
+        """
+        last_update_id: int = 0
+        if offset_state_path and offset_state_path.exists():
+            try:
+                last_update_id = int(offset_state_path.read_text().strip() or 0)
+            except ValueError:
+                last_update_id = 0
+
+        async with httpx.AsyncClient(timeout=timeout + 10) as client:
+            while True:
+                try:
+                    resp = await client.get(
+                        f"{self._endpoint}/getUpdates",
+                        params={
+                            "offset": last_update_id + 1,
+                            "timeout": timeout,
+                            "allowed_updates": ["callback_query"],
+                        },
+                    )
+                except httpx.HTTPError as e:
+                    logger.warning("getUpdates error: %s — sleeping 5s", e)
+                    await asyncio.sleep(5)
+                    continue
+
+                if resp.status_code != 200:
+                    logger.warning("getUpdates status=%d body=%s",
+                                   resp.status_code, resp.text[:200])
+                    await asyncio.sleep(5)
+                    continue
+
+                data = resp.json()
+                for update in data.get("result", []):
+                    last_update_id = max(last_update_id, update.get("update_id", 0))
+                    cb = update.get("callback_query")
+                    if not cb:
+                        continue
+
+                    event = self._parse_callback(cb)
+                    if not event:
+                        continue
+
+                    # Acknowledge the tap so the spinner stops.
+                    cb_id = cb.get("id")
+                    if cb_id:
+                        try:
+                            await client.post(
+                                f"{self._endpoint}/answerCallbackQuery",
+                                json={"callback_query_id": cb_id},
+                            )
+                        except httpx.HTTPError:
+                            pass
+
+                    try:
+                        await on_event(event)
+                    except Exception as e:
+                        logger.error("Approval handler raised: %s", e, exc_info=True)
+
+                if offset_state_path:
+                    offset_state_path.write_text(str(last_update_id))
+
+    def _parse_callback(self, cb: dict[str, Any]) -> ApprovalEvent | None:
+        """Map a Telegram callback_query to an ApprovalEvent. Ignore strangers."""
+        from datetime import datetime, timezone
+
+        cb_data = cb.get("data", "")
+        if not cb_data.startswith("ubik:"):
+            return None
+
+        try:
+            _, verb, proposal_id = cb_data.split(":", 2)
+        except ValueError:
+            return None
+
+        # Auth gate — only configured approver chat_ids can act.
+        from_user = cb.get("from", {})
+        msg = cb.get("message", {})
+        chat = msg.get("chat", {})
+        chat_id = chat.get("id")
+        if chat_id not in self.config.chat_ids:
+            logger.warning("Ignored callback from unauthorized chat=%s", chat_id)
+            return None
+
+        verb_to_decision = {
+            "approve": Decision.APPROVED,
+            "reject": Decision.REJECTED,
+            "diff": Decision.PENDING,    # 'diff' means 'show me more'; not a final decision
+            "refine": Decision.REFINE,
+        }
+        decision = verb_to_decision.get(verb)
+        if not decision:
+            return None
+
+        return ApprovalEvent(
+            proposal_id=proposal_id,
+            decision=decision,
+            by=str(from_user.get("username") or from_user.get("id") or ""),
+            at=datetime.now(timezone.utc).isoformat(),
+        )
 
     # ── rendering ────────────────────────────────────────────────────────
 

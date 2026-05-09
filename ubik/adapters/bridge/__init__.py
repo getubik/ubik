@@ -1,5 +1,12 @@
 """Bridge adapters — how Ubik whispers to humans."""
-from .base import Bridge, Decision, NotifyMessage, Severity
+from .base import (
+    ApprovalEvent,
+    Bridge,
+    Decision,
+    NotifyMessage,
+    ProposalMessage,
+    Severity,
+)
 from .telegram import (
     TelegramBridge,
     TelegramConfig,
@@ -8,9 +15,11 @@ from .telegram import (
 )
 
 __all__ = [
+    "ApprovalEvent",
     "Bridge",
     "Decision",
     "NotifyMessage",
+    "ProposalMessage",
     "Severity",
     "TelegramBridge",
     "TelegramConfig",
