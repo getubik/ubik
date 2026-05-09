@@ -1,6 +1,6 @@
 # Architecture
 
-> *Pssssst! Ubik whispers because it has earned the right to be heard.*
+> *Psssst! Ubik whispers because it has earned the right to be heard.*
 
 ## Loop
 

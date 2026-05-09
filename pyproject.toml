@@ -5,7 +5,7 @@ build-backend = "uv_build"
 [project]
 name = "ubik"
 version = "0.0.1"
-description = "Pssssst! An AI resident engineer for your codebase."
+description = "Psssst! An AI resident engineer for your codebase."
 readme = "README.md"
 requires-python = ">=3.10"
 license = "Apache-2.0"
@@ -127,10 +127,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/getubik/ubik"
-Documentation = "https://github.com/getubik/ubik#readme"
+Homepage = "https://psssst.dev"
+Documentation = "https://psssst.dev/docs"
+Repository = "https://github.com/getubik/ubik"
 Issues = "https://github.com/getubik/ubik/issues"
-Source = "https://github.com/getubik/ubik"
 Changelog = "https://github.com/getubik/ubik/blob/main/CHANGELOG.md"
 
 [project.scripts]

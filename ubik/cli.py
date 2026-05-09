@@ -21,7 +21,7 @@ from rich.console import Console
 
 app = typer.Typer(
     name="ubik",
-    help="Pssssst! An AI resident engineer for your codebase.",
+    help="Psssst! An AI resident engineer for your codebase.",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -48,7 +48,7 @@ def run(
         console.print("Run [bold]ubik init[/bold] to scaffold one, or pass --config.")
         raise typer.Exit(1)
 
-    console.print(f"[dim]Pssssst! Ubik is reading [bold]{config}[/bold]...[/dim]")
+    console.print(f"[dim]Psssst! Ubik is reading [bold]{config}[/bold]...[/dim]")
     # TODO(sprint-1): load config, wire adapters, start scheduler.
     console.print("[yellow]daemon not implemented yet — sprint 1[/yellow]")
 
@@ -81,7 +81,7 @@ def mcp(
     Plug into Claude Desktop / Cursor / Continue.dev via the standard
     `mcpServers` config.
     """
-    console.print(f"[dim]Pssssst! MCP server starting ({transport})...[/dim]")
+    console.print(f"[dim]Psssst! MCP server starting ({transport})...[/dim]")
     # TODO(sprint-2): start MCP server.
     console.print("[yellow]MCP server not implemented yet — sprint 2[/yellow]")
 
@@ -108,7 +108,7 @@ def audit(
         console.print(f"[red]repo not found: {repo}[/red]")
         raise typer.Exit(1)
 
-    console.print(f"[dim]Pssssst! Auditing [bold]{repo.resolve()}[/bold]...[/dim]")
+    console.print(f"[dim]Psssst! Auditing [bold]{repo.resolve()}[/bold]...[/dim]")
     # TODO(sprint-1): run researcher in single-shot mode.
     console.print("[yellow]audit not implemented yet — sprint 1[/yellow]")
 

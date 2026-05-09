@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────
-# Pssssst! Ubik configuration
+# Psssst! Ubik configuration
 #
 # Copy this file to `ubik.yaml` in any repo. Adjust the four adapter
 # blocks (researcher, executor, bridge, verifier) and `ubik run`.
@@ -144,8 +144,8 @@ mcp:
   server_card:
     enabled: true
     public_name: "ubik"
-    description: "Pssssst! AI resident engineer."
-    homepage: "https://github.com/getubik/ubik"
+    description: "Psssst! AI resident engineer."
+    homepage: "https://psssst.dev"
 
 # ── Observability ──────────────────────────────────────────────────
 observability:

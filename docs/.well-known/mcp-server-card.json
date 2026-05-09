@@ -1,0 +1,70 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/mcp-server-card/1.0",
+  "name": "ubik",
+  "title": "Psssst!",
+  "version": "0.0.1",
+  "status": "pre-alpha",
+  "description": "An AI resident engineer for your codebase. Whispers findings to your Telegram, proposes fixes with evidence, and ships them through a pluggable executor when you tap approve.",
+  "homepage": "https://psssst.dev",
+  "repository": "https://github.com/getubik/ubik",
+  "license": "Apache-2.0",
+  "categories": [
+    "code-review",
+    "research",
+    "agent",
+    "autonomous",
+    "developer-tools"
+  ],
+  "transports": ["stdio", "streamable-http"],
+  "auth": {
+    "oauth": {
+      "supported": true,
+      "required_for_remote": true,
+      "version": "2.1"
+    }
+  },
+  "tools": [
+    {
+      "name": "ubik.research",
+      "description": "Run a research session on a topic — codebase, competitors, tech trends. Returns a structured report."
+    },
+    {
+      "name": "ubik.audit_repo",
+      "description": "One-shot audit of a repository. Surfaces stale code, missing tests, inconsistent patterns, security smells."
+    },
+    {
+      "name": "ubik.propose_fix",
+      "description": "Generate a structured improvement proposal: severity, evidence, plan, risk."
+    },
+    {
+      "name": "ubik.notebook.search",
+      "description": "Semantic search across past research notebook entries (multi-project memory)."
+    },
+    {
+      "name": "ubik.notebook.recent",
+      "description": "Return the N most recent notebook entries with their summaries."
+    }
+  ],
+  "resources": [
+    {
+      "uri_template": "ubik://notebook/{entry_id}",
+      "description": "A single archived research entry as markdown."
+    },
+    {
+      "uri_template": "ubik://proposals/{proposal_id}",
+      "description": "An active improvement proposal awaiting approval."
+    }
+  ],
+  "prompts": [
+    "ubik.competitor-scan",
+    "ubik.codebase-audit",
+    "ubik.security-review",
+    "ubik.architecture-review"
+  ],
+  "publisher": {
+    "name": "Ubik",
+    "url": "https://psssst.dev",
+    "github": "getubik"
+  },
+  "_note": "This file is a placeholder served from GitHub Pages until Sprint 2 lands the Python MCP server (which will serve a live, runtime-generated card from /.well-known/mcp-server-card)."
+}
