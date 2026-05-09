@@ -1,7 +1,7 @@
 {
   "$schema": "https://modelcontextprotocol.io/schemas/mcp-server-card/1.0",
   "name": "ubik",
-  "title": "Psssst!",
+  "title": "Ubik",
   "version": "0.0.1",
   "status": "pre-alpha",
   "description": "An AI resident engineer for your codebase. Whispers findings to your Telegram, proposes fixes with evidence, and ships them through a pluggable executor when you tap approve.",

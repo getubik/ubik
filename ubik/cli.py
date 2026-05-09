@@ -21,7 +21,7 @@ from rich.console import Console
 
 app = typer.Typer(
     name="ubik",
-    help="Psssst! An AI resident engineer for your codebase.",
+    help="Ubik — an AI resident engineer for your codebase. (Pssst!)",
     no_args_is_help=True,
     add_completion=False,
 )
@@ -48,7 +48,7 @@ def run(
         console.print("Run [bold]ubik init[/bold] to scaffold one, or pass --config.")
         raise typer.Exit(1)
 
-    console.print(f"[dim]Psssst! Ubik is reading [bold]{config}[/bold]...[/dim]")
+    console.print(f"[dim]🤫 Ubik · reading [bold]{config}[/bold]…[/dim]")
     # TODO(sprint-1): load config, wire adapters, start scheduler.
     console.print("[yellow]daemon not implemented yet — sprint 1[/yellow]")
 
@@ -81,9 +81,34 @@ def mcp(
     Plug into Claude Desktop / Cursor / Continue.dev via the standard
     `mcpServers` config.
     """
-    console.print(f"[dim]Psssst! MCP server starting ({transport})...[/dim]")
-    # TODO(sprint-2): start MCP server.
-    console.print("[yellow]MCP server not implemented yet — sprint 2[/yellow]")
+    if transport != "stdio":
+        console.print(
+            f"[yellow]transport={transport!r} not yet implemented "
+            f"(stdio only in Sprint 2.2; HTTP lands in Sprint 2.4)[/yellow]"
+        )
+        raise typer.Exit(2)
+
+    import asyncio
+    import logging
+
+    from ubik.mcp.server import run_stdio
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s · %(name)s · %(levelname)s · %(message)s",
+    )
+
+    # stderr banner — stdout MUST stay clean for the JSON-RPC protocol.
+    import sys
+    print("🤫 Ubik · MCP server (stdio) ready", file=sys.stderr)
+
+    try:
+        asyncio.run(run_stdio(config_path=config))
+    except KeyboardInterrupt:
+        print("Ubik MCP server stopped.", file=sys.stderr)
+    except RuntimeError as e:
+        console.print(f"[red]MCP server failed: {e}[/red]")
+        raise typer.Exit(3) from e
 
 
 @app.command()
@@ -149,7 +174,7 @@ def audit(
     llm = llm_from_config(cfg.llm.to_litellm_dict())
 
     console.print(
-        f"[dim]🤫 Pssst! Auditing [bold]{repo.resolve()}[/bold] "
+        f"[dim]🤫 Ubik · auditing [bold]{repo.resolve()}[/bold] "
         f"with [cyan]{cfg.llm.model}[/cyan]…[/dim]"
     )
 

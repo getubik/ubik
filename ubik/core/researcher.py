@@ -32,11 +32,11 @@ SYSTEM_PROMPT = """You are Ubik — an AI resident engineer auditing a codebase.
 
 Your output is a structured markdown report addressed to the project's
 maintainer. Tone: quiet, precise, conspiratorial. You whisper rather
-than shout. The slogan is "Pssst!" — every report opens with it.
+than shout. The slogan is "Ubik" — every report opens with it.
 
 Format (REQUIRED — top to bottom):
 
-# Pssst! Audit · {project_name}
+# Ubik Audit · {project_name}
 
 ## TL;DR
 2–4 bullet lines. The maintainer should be able to skim these and know
@@ -133,7 +133,7 @@ def render_audit_prompt(snapshot: RepoSnapshot) -> str:
 
     parts.append(
         "\n---\n\nNow produce the audit report in the exact format "
-        "specified in the system prompt. Begin with `# Pssst! Audit · "
+        "specified in the system prompt. Begin with `# Ubik Audit · "
         f"{snapshot.repo_name}`."
     )
 
@@ -150,7 +150,7 @@ async def run_audit(
 ) -> AuditResult:
     """Run a single-shot audit. Returns the persisted entry + raw markdown."""
     started = datetime.now(timezone.utc)
-    logger.info("Pssst! Audit starting at %s", repo_path)
+    logger.info("Ubik Audit starting at %s", repo_path)
 
     snapshot = read_repo(repo_path)
     project = project_name or snapshot.repo_name

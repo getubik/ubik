@@ -40,5 +40,19 @@
       "audit",
       "single-shot"
     ]
+  },
+  {
+    "slug": "2026-05-09-pssst-audit-gyibb",
+    "kind": "audit",
+    "project": "gyibb",
+    "title": "Pssst! Audit · GYIBB",
+    "summary": "- The Ambassador container mounts the Docker socket — any code-execution vulnerability in that service is an instant host takeover. - Three gateway implementations coexist in `anots_gateway/` with no deprecation markers; two are dead code t…",
+    "created_at": "2026-05-09T17:15:51.840026+00:00",
+    "body_path": "audit/2026-05-09-pssst-audit-gyibb.md",
+    "severity": null,
+    "tags": [
+      "audit",
+      "single-shot"
+    ]
   }
 ]

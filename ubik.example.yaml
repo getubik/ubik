@@ -144,7 +144,8 @@ mcp:
   server_card:
     enabled: true
     public_name: "ubik"
-    description: "Psssst! AI resident engineer."
+    title: "Ubik"
+    description: "An AI resident engineer for your codebase. (Pssst!)"
     homepage: "https://psssst.dev"
 
 # ── Observability ──────────────────────────────────────────────────

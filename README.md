@@ -1,12 +1,15 @@
-# Psssst!
+# Ubik
 
-> *An AI resident engineer for your codebase.*
-> *Whispers findings. Proposes fixes. Waits for your tap.*
+> *Pssst — wanna solve some entropy?*
+>
+> An AI resident engineer for your codebase. Whispers findings. Proposes fixes. Waits for your tap.
 
 🤫 [psssst.dev](https://psssst.dev) · `pip install ubik`
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange.svg)](#)
+
+> **Ubik is the product. "Pssst!" is the noise it makes when it's about to tell you something.**
 
 ---
 
@@ -17,7 +20,7 @@ Ubik lives next to your repository. While you sleep, it:
 1. **Reads** the codebase, the recent commits, the production logs.
 2. **Watches** competitors, tech trends, papers, security advisories.
 3. **Proposes** specific improvements — with evidence, plan, and risk.
-4. **Whispers** to you on Telegram: *"Psssst! Found something."*
+4. **Whispers** to you on Telegram: *"Pssst — Ubik found something."*
 5. **Ships** the fix when you tap ✅ — through Aider, Claude Code, or any
    agentic executor — onto a feature branch, with tests, as a PR.
 
@@ -46,7 +49,7 @@ That's it. Ubik is now resident.
 
 ---
 
-## Why "Psssst!"
+## Why "Pssst"?
 
 Most AI tooling shouts. Ubik whispers. The slogan comes from Philip K. Dick's
 1969 novel *Ubik*, where a mysterious product cures reality through cryptic
