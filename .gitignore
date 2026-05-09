@@ -51,3 +51,4 @@ research/proposals/
 # Logs
 *.log
 logs/
+.aider*
