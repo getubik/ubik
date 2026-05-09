@@ -96,21 +96,89 @@ def audit(
         None,
         "--output",
         "-o",
-        help="Write report to this path (default: stdout)",
+        help="Write report to this path in addition to the notebook",
+    ),
+    config: Optional[Path] = typer.Option(
+        None,
+        "--config",
+        "-c",
+        help="Path to ubik.yaml (default: ./ubik.yaml in repo, or env-only)",
+    ),
+    project_name: Optional[str] = typer.Option(
+        None, "--project", help="Override project name in the report"
+    ),
+    notebook_path: Optional[Path] = typer.Option(
+        None, "--notebook", help="Override notebook root (default: ./research in repo)"
+    ),
+    max_tokens: int = typer.Option(
+        8000, "--max-tokens", help="Cap on the model's reply length"
     ),
 ) -> None:
     """One-shot codebase audit.
 
-    Reads the repo, runs the researcher loop once, dumps a markdown
-    report. Useful for trying Ubik without committing to a daemon.
+    Reads the repo, runs the researcher loop once, persists a markdown
+    report into the notebook. Useful for trying Ubik without committing
+    to a daemon.
     """
     if not repo.exists():
         console.print(f"[red]repo not found: {repo}[/red]")
         raise typer.Exit(1)
 
-    console.print(f"[dim]Psssst! Auditing [bold]{repo.resolve()}[/bold]...[/dim]")
-    # TODO(sprint-1): run researcher in single-shot mode.
-    console.print("[yellow]audit not implemented yet — sprint 1[/yellow]")
+    import asyncio
+    import logging
+
+    from ubik.adapters.llm import llm_from_config
+    from ubik.core.config import load as load_config
+    from ubik.core.notebook import Notebook
+    from ubik.core.researcher import run_audit
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s · %(name)s · %(levelname)s · %(message)s",
+    )
+
+    cfg = load_config(config, repo_path=repo)
+    nb_root = notebook_path or (Path(cfg.project.repo_path) / cfg.notebook.path).resolve()
+    notebook = Notebook(nb_root)
+
+    llm = llm_from_config(cfg.llm.to_litellm_dict())
+
+    console.print(
+        f"[dim]🤫 Pssst! Auditing [bold]{repo.resolve()}[/bold] "
+        f"with [cyan]{cfg.llm.model}[/cyan]…[/dim]"
+    )
+
+    try:
+        result = asyncio.run(
+            run_audit(
+                llm=llm,
+                notebook=notebook,
+                repo_path=repo,
+                project_name=project_name,
+                max_tokens=max_tokens,
+            )
+        )
+    except RuntimeError as e:
+        console.print(f"[red]audit failed: {e}[/red]")
+        raise typer.Exit(2) from e
+
+    body_path = nb_root / result.entry.body_path
+    console.print()
+    console.print(f"[green]✅ Audit saved → [bold]{body_path}[/bold][/green]")
+    console.print(
+        f"   tokens: in={result.input_tokens} out={result.output_tokens} "
+        f"thinking={result.thinking_tokens}"
+    )
+
+    if output:
+        Path(output).write_text(result.markdown, encoding="utf-8")
+        console.print(f"   also written → {output}")
+
+    head = "\n".join(result.markdown.splitlines()[:30])
+    console.print()
+    console.print("[dim]── preview (first 30 lines) ──[/dim]")
+    console.print(head)
+    console.print("[dim]── /preview ──[/dim]")
 
 
 @app.command()
