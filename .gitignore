@@ -1,0 +1,53 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+.eggs/
+build/
+dist/
+wheels/
+.tox/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+.mypy_cache/
+.ruff_cache/
+
+# Virtual envs
+.venv/
+venv/
+env/
+ENV/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Local config / secrets
+.env
+.env.*
+!.env.example
+ubik.yaml
+!ubik.example.yaml
+secrets/
+
+# Notebook (per-project research output — should NOT be committed
+# from the agent's runtime; commit only template + manifest schema)
+research/notebook/
+research/transcripts/
+research/proposals/
+!research/.gitkeep
+
+# Worktrees (executor sandbox)
+.ubik-worktrees/
+
+# Logs
+*.log
+logs/

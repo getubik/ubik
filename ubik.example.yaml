@@ -1,0 +1,94 @@
+# ─────────────────────────────────────────────────────────────────────
+# Pssssst! Ubik configuration
+#
+# Copy this file to `ubik.yaml` in any repo. Adjust the four adapter
+# blocks (researcher.llm, executor, bridge, verifier) and `ubik run`.
+#
+# Every adapter is pluggable — swap providers without touching code.
+# ─────────────────────────────────────────────────────────────────────
+
+project:
+  name: "my-project"
+  repo_path: "."                       # the codebase Ubik watches
+  default_branch: "main"
+
+# ── Researcher: who reads the world ─────────────────────────────────
+researcher:
+  llm:
+    provider: "openai_compatible"      # litellm-style; works for Z.AI, OpenAI, Anthropic, local
+    base_url: "https://api.z.ai/api/coding/paas/v4"
+    api_key_env: "Z_AI_API_KEY"
+    model: "glm-5.1"
+    thinking: true                     # extended-thinking on supported models
+    max_tokens: 32000
+
+  schedule:
+    daily_at: "09:00"                  # local time
+    weekly_at: "monday 10:00"
+    pulse_every_minutes: 60            # cheap anomaly sweep
+    monthly_on: "first-monday 09:00"
+
+  scope:
+    # What the agent is allowed to look at
+    web_search: true                   # via Serper or DuckDuckGo
+    arxiv: true
+    hackernews: true
+    github_issues: true
+    competitor_urls:
+      - "https://wirecutter.com"
+      - "https://rtings.com"
+
+# ── Executor: who writes the fix ────────────────────────────────────
+executor:
+  type: "claude_code"                  # alternatives: aider, openhands, custom
+  llm:
+    base_url: "https://api.z.ai/api/coding/paas/v4"   # Claude Code via Z.AI shim
+    api_key_env: "Z_AI_API_KEY"
+    model: "glm-5.1"
+
+  sandbox:
+    worktree_dir: "./.ubik-worktrees"  # isolated git worktrees per task
+    cost_cap_usd: 5                    # hard kill switch per task
+    time_cap_minutes: 15
+    network_allowlist:                 # default-deny, allowlist-add
+      - "github.com"
+      - "pypi.org"
+      - "registry.npmjs.org"
+
+  guardrails:
+    cannot_push_to: ["main", "master", "production"]
+    require_tests: true
+    require_pr_review: true            # final merge needs human approval
+
+# ── Bridge: how Ubik talks to you ───────────────────────────────────
+bridge:
+  type: "telegram"
+  token_env: "TELEGRAM_BOT_TOKEN"
+  approver_chat_ids:                   # only these chats can approve
+    - 123456789
+  rate_limit:
+    max_pushes_per_hour: 5
+    cooldown_minutes_per_proposal: 60
+
+# ── Verifier: who checks the fix ────────────────────────────────────
+verifier:
+  test_command: "pytest -q"
+  build_command: null                  # e.g. "npm run build" for JS projects
+  smoke_command: null                  # post-deploy hit-the-endpoint check
+
+  pr:
+    provider: "github"
+    repo: "getubik/ubik"
+    base_branch: "main"
+    auto_create: true                  # create PR after executor finishes
+
+# ── Notebook: where Ubik remembers ──────────────────────────────────
+notebook:
+  storage: "filesystem"                # alternatives: postgres, sqlite
+  path: "./research"                   # markdown + manifest.json archive
+  retention_days: 365
+
+# ── Cost ceiling — global ───────────────────────────────────────────
+cost:
+  daily_usd_cap: 15
+  alert_at_percent: 80
