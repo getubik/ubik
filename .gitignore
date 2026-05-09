@@ -37,6 +37,8 @@ ENV/
 ubik.yaml
 !ubik.example.yaml
 secrets/
+scripts/forge-deploy*.sh
+scripts/*-secrets.sh
 
 # Notebook (per-project research output — should NOT be committed
 # from the agent's runtime; commit only template + manifest schema)
