@@ -2,11 +2,19 @@
 Tiny helpers to extract a Telegram-sized digest from a long markdown
 audit report. No LLM, just structural parsing — keeps the notify path
 deterministic, fast, and free.
+
+Two extractors live here:
+
+  • ``digest_audit``      — squeeze the audit into a phone-sized blurb
+                             (TL;DR + finding count + top 3 titles)
+  • ``extract_findings``  — pull each ``### N. <title> · <severity>``
+                             block out as a FindingExtract for the
+                             daemon to turn into Proposals
 """
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(slots=True)
@@ -70,6 +78,96 @@ def digest_audit(markdown: str, *, fallback_title: str = "Audit") -> AuditDigest
         severities=severities,
         top_findings=findings[:3],
     )
+
+
+@dataclass(slots=True)
+class FindingExtract:
+    """One numbered finding pulled out of an audit report."""
+
+    number: int
+    title: str
+    severity: str
+    """low | medium | high | critical | unknown"""
+
+    evidence: list[str] = field(default_factory=list)
+    why_it_matters: str = ""
+    proposed_fix: str = ""
+    risk: str = ""
+    eta: str = ""
+
+    raw_block: str = ""
+    """The full markdown block, preserved for debugging / proposal body."""
+
+
+# Section labels we recognize inside a finding block. All optional —
+# missing fields just stay empty.
+_FINDING_BLOCK_RE = re.compile(
+    r"^###\s+(?P<num>\d+)\.\s+(?P<title>.+?)"
+    r"(?:\s+·\s+(?P<sev>low|medium|high|critical))?\s*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+_LABEL_RE = re.compile(
+    r"\*\*(?P<label>Evidence|Why it matters|Proposed fix|Risk|ETA)\*\*:?\s*"
+    r"(?P<body>.*?)(?=\*\*(?:Evidence|Why it matters|Proposed fix|Risk|ETA)\*\*|$)",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
+def extract_findings(markdown: str) -> list[FindingExtract]:
+    """Pull every ``### N. <title> · <sev>`` block out of an audit report.
+
+    Robust to the optional fields being missing or rearranged. Stops the
+    block at the next H3 (next finding) or H2 (section change). Returns
+    findings in document order.
+    """
+    findings: list[FindingExtract] = []
+
+    # Collect all match positions so we can slice the block bodies.
+    matches = list(_FINDING_BLOCK_RE.finditer(markdown))
+    for i, m in enumerate(matches):
+        block_start = m.end()
+        # Stop at the next finding heading OR the next H2 section.
+        block_end = len(markdown)
+        if i + 1 < len(matches):
+            block_end = matches[i + 1].start()
+        # Or the next H2 (## ...) — for the "What looks healthy" section.
+        h2_match = re.search(r"^##\s+", markdown[block_start:block_end], re.MULTILINE)
+        if h2_match:
+            block_end = block_start + h2_match.start()
+
+        body = markdown[block_start:block_end].strip()
+
+        finding = FindingExtract(
+            number=int(m.group("num")),
+            title=m.group("title").strip(),
+            severity=(m.group("sev") or "unknown").lower(),
+            raw_block=body,
+        )
+
+        # Walk the labels inside the block.
+        for lm in _LABEL_RE.finditer(body):
+            label = lm.group("label").lower()
+            text = lm.group("body").strip().rstrip("*").rstrip()
+            if label == "evidence":
+                # Evidence often spans multiple lines / bullets — split on newlines.
+                finding.evidence = [
+                    line.lstrip("•- ").strip()
+                    for line in text.splitlines()
+                    if line.strip() and not line.strip().startswith("**")
+                ]
+            elif label == "why it matters":
+                finding.why_it_matters = text
+            elif label == "proposed fix":
+                finding.proposed_fix = text
+            elif label == "risk":
+                # Strip trailing "(.|—|...) ETA stuff" if author crammed onto one line.
+                finding.risk = text.split("\n", 1)[0].strip().rstrip(".")
+            elif label == "eta":
+                finding.eta = text.split("\n", 1)[0].strip().rstrip(".")
+
+        findings.append(finding)
+
+    return findings
 
 
 def render_telegram_body(digest: AuditDigest, *, body_url: str | None = None) -> str:

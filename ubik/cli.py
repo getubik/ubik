@@ -36,21 +36,94 @@ def run(
         "-c",
         help="Path to ubik.yaml (default: ./ubik.yaml)",
     ),
-    once: bool = typer.Option(False, "--once", help="Run one cycle and exit (debug)"),
+    repo: Optional[Path] = typer.Option(
+        None,
+        "--repo",
+        help="Override the repo path the daemon watches (default: from config).",
+    ),
+    daily_at: str = typer.Option(
+        "09:00",
+        "--daily-at",
+        help="Local time HH:MM for the daily audit cycle.",
+    ),
+    pulse_minutes: int = typer.Option(
+        0,
+        "--pulse-minutes",
+        help="If > 0, fire a quick pulse cycle every N minutes (Sprint 5).",
+    ),
+    notebook_path: Optional[Path] = typer.Option(
+        None,
+        "--notebook",
+        help="Override notebook root (default: <repo>/research).",
+    ),
+    poll_offset_file: Path = typer.Option(
+        Path("/var/lib/ubik/poll-offset"),
+        "--poll-offset-file",
+        help="Where to persist the Telegram update_id between restarts.",
+    ),
+    min_severity: str = typer.Option(
+        "medium",
+        "--min-severity",
+        help="Floor severity for proposals (low/medium/high/critical).",
+    ),
 ) -> None:
     """Start the autonomous Ubik daemon.
 
-    Reads `ubik.yaml`, wires the adapters, schedules research loops, and
-    listens to the configured bridge for approval taps.
+    Wires adapters, runs a daily Researcher cycle, and concurrently
+    long-polls the bridge for approval taps. Produces Proposals from
+    audit findings, publishes them to Telegram, and on ✅ ships fixes
+    via the Executor + Verifier pipeline.
+
+    Stop with Ctrl-C (sends a "going quiet" notification, drains
+    in-flight tasks).
     """
-    if not config.exists():
-        console.print(f"[red]config not found: {config}[/red]")
-        console.print("Run [bold]ubik init[/bold] to scaffold one, or pass --config.")
+    import asyncio
+    import logging
+
+    from ubik.core.config import load as load_config
+    from ubik.core.daemon import Daemon, DaemonConfig
+
+    cfg = load_config(config if config.exists() else None, repo_path=repo)
+    if not cfg.project.repo_path:
+        console.print(
+            "[red]No repo path. Pass --repo or set project.repo_path in ubik.yaml.[/red]"
+        )
         raise typer.Exit(1)
 
-    console.print(f"[dim]🤫 Ubik · reading [bold]{config}[/bold]…[/dim]")
-    # TODO(sprint-1): load config, wire adapters, start scheduler.
-    console.print("[yellow]daemon not implemented yet — sprint 1[/yellow]")
+    nb_root = notebook_path or (Path(cfg.project.repo_path) / cfg.notebook.path).resolve()
+
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s · %(name)s · %(levelname)s · %(message)s",
+    )
+
+    daemon_cfg = DaemonConfig(
+        daily_at=daily_at,
+        pulse_minutes=pulse_minutes,
+        approval_poll_offset=str(poll_offset_file),
+        min_proposal_severity=min_severity,
+    )
+
+    console.print(
+        f"[dim]🤫 Ubik · daemon waking up · "
+        f"watching [bold]{cfg.project.repo_path}[/bold] · "
+        f"daily audit @ [cyan]{daily_at}[/cyan][/dim]"
+    )
+
+    try:
+        daemon = Daemon(
+            config=cfg,
+            notebook_root=nb_root,
+            daemon_config=daemon_cfg,
+        )
+    except RuntimeError as e:
+        console.print(f"[red]Daemon setup failed: {e}[/red]")
+        raise typer.Exit(2) from e
+
+    try:
+        asyncio.run(daemon.run())
+    except KeyboardInterrupt:
+        console.print("\n[dim]Ubik · received Ctrl-C, shutting down…[/dim]")
 
 
 @app.command()
