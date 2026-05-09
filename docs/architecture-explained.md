@@ -2,6 +2,11 @@
 
 Or: *what's actually under the hood, and how the pieces talk.*
 
+> Ubik runs on Forge (residential VPS, hostname `Hermes`) with a
+> minute-grained `git fetch + reinstall` cron — same pattern GYIBB's
+> scraper uses. Push to `main` and within 60s the Forge instance
+> reflects the new code, no human touch.
+
 This document walks the reader through Ubik's internals one layer at a time.
 If you read [`architecture.md`](architecture.md) first you've got the
 diagrams; this is the version that answers questions like "wait, when I run
