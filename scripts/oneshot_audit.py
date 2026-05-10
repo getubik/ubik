@@ -1,4 +1,4 @@
-"""Trigger one full Daemon._daily_audit_cycle() and exit.
+"""Trigger one full Daemon.run_audit_cycle() and exit.
 
 Used to smoke-test the autonomous loop without waiting for daily_at.
 Safe to run while the systemd daemon is up — the live daemon keeps
@@ -43,8 +43,8 @@ async def main() -> None:
         ),
     )
 
-    print(f"[oneshot] running _daily_audit_cycle for {args.repo}")
-    await daemon._daily_audit_cycle()
+    print(f"[oneshot] running run_audit_cycle for {args.repo}")
+    await daemon.run_audit_cycle()
     print("[oneshot] done")
 
 
