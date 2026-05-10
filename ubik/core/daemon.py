@@ -170,6 +170,10 @@ class Daemon:
 
     # ── scheduled jobs ──────────────────────────────────────────────────
 
+    async def run_audit_cycle(self) -> None:
+        """Public entry point for a single audit cycle."""
+        return await self._daily_audit_cycle()
+
     async def _daily_audit_cycle(self) -> None:
         """One audit pass: snapshot → audit → extract findings → proposals → publish."""
         repo_path = Path(self.cfg.project.repo_path)
