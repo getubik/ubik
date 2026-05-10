@@ -181,7 +181,7 @@ class TelegramBridge(Bridge):
         self,
         *,
         on_event,
-        offset_state_path: Path | None = None,
+        offset_state_path: Path | None = Path.home() / ".ubik" / "poll-offset",
         timeout: int = 25,
     ) -> None:
         """Long-poll Telegram for callback_query events forever.
@@ -193,6 +193,9 @@ class TelegramBridge(Bridge):
         Run this from the orchestrator main loop. On any HTTP error we
         backoff then retry — keeps running across transient outages.
         """
+        if offset_state_path:
+            offset_state_path.parent.mkdir(parents=True, exist_ok=True)
+
         last_update_id: int = 0
         if offset_state_path and offset_state_path.exists():
             try:
