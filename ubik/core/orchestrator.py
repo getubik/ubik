@@ -228,8 +228,12 @@ class Orchestrator:
 
         # If executor succeeded AND a verifier is configured, push +
         # open the PR right after. State moves to PR_OPENED on success.
+        # `result.files_changed` is the same gate the empty-diff guard
+        # above uses; without it the verifier would push an empty branch
+        # and GitHub would reject the PR with 422 (No commits between).
         if (
             result.outcome == ExecutorOutcome.SUCCESS
+            and result.files_changed
             and self.verifier is not None
             and result.branch
         ):
