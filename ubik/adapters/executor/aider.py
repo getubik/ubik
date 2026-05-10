@@ -34,6 +34,7 @@ from pathlib import Path
 from ubik.tools.git import (
     Worktree,
     commit_all,
+    commits_ahead,
     create_worktree,
     diff_shortstat,
     files_changed,
@@ -134,12 +135,39 @@ class AiderExecutor(Executor):
         head = None
         files: list[str] = []
         diff_stat = ""
+        ahead = 0
         try:
             head = head_sha(wt)
             files = files_changed(wt)
             diff_stat = diff_shortstat(wt)
+            # `commits_ahead` is the canonical "did anything actually
+            # ship?" signal. If 0, the worktree's HEAD is still equal
+            # to origin/<base_branch> and pushing gets us a 422 from
+            # GitHub. Older code looked at `files` (which can fill up
+            # falsely when the local base_branch ref lags behind the
+            # remote — see ubik/tools/git.py::_refresh_base_ref).
+            ahead = commits_ahead(wt)
         except Exception as e:
             logger.warning("Post-aider inspection failed: %s", e)
+
+        # If Aider reported success but produced no new commits, demote
+        # to FAILED so the orchestrator and verifier both short-circuit
+        # cleanly. This is the only place we can catch the case where
+        # Aider described changes in markdown but never committed them.
+        if outcome == ExecutorOutcome.SUCCESS and ahead == 0:
+            logger.info(
+                "Aider exited success but no new commits on %s — demoting to FAILED",
+                wt.branch,
+            )
+            outcome = ExecutorOutcome.FAILED
+            exec_notes = (
+                (exec_notes or "")
+                + "\n\nNo new commits on the worktree branch — Aider "
+                "may have described the change in markdown without "
+                "committing it. Marked as failed so the verifier "
+                "doesn't push an empty branch."
+            ).strip()
+            files = []  # don't lie to downstream consumers
 
         # 4. Optional test run on the worktree
         test_passed: bool | None = None

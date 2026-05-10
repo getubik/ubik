@@ -129,23 +129,70 @@ def head_sha(worktree: Worktree) -> str:
     return _git(["rev-parse", "HEAD"], cwd=worktree.path)
 
 
+def _refresh_base_ref(worktree: Worktree) -> None:
+    """Pull `origin/<base_branch>` so diffs see the same SHA the worktree
+    was actually forked from. Without this, the *local* `<base_branch>`
+    ref can lag behind the remote — happens whenever a co-worker (or
+    Ubik itself, on a previous cycle) merges a PR while the daemon is
+    asleep. The next cycle's worktree forks from `origin/main` (latest)
+    but `git diff main...HEAD` compares against an older local SHA, so
+    every commit between old-local-main and origin-main shows up as
+    "changes" on the new branch — including merges that landed
+    upstream long ago. Falsely-positive `files_changed` then leaks past
+    the empty-commit guard in the orchestrator and the verifier
+    happily pushes an empty branch, GitHub returns 422, and the user
+    sees a stuck "branch ready" notification with no PR.
+    """
+    _git(
+        ["fetch", "origin", worktree.base_branch],
+        cwd=worktree.path,
+        check=False,
+    )
+
+
 def diff_shortstat(worktree: Worktree) -> str:
-    """Return `git diff --shortstat` against base_branch."""
+    """Return `git diff --shortstat` against the *remote* base_branch."""
+    _refresh_base_ref(worktree)
     return _git(
-        ["diff", "--shortstat", f"{worktree.base_branch}...HEAD"],
+        ["diff", "--shortstat", f"origin/{worktree.base_branch}...HEAD"],
         cwd=worktree.path,
         check=False,
     )
 
 
 def files_changed(worktree: Worktree) -> list[str]:
-    """List repo-relative paths changed on this worktree's branch."""
+    """List repo-relative paths changed on this worktree's branch.
+
+    Compares against `origin/<base_branch>` rather than the local ref —
+    see `_refresh_base_ref` for why.
+    """
+    _refresh_base_ref(worktree)
     out = _git(
-        ["diff", "--name-only", f"{worktree.base_branch}...HEAD"],
+        ["diff", "--name-only", f"origin/{worktree.base_branch}...HEAD"],
         cwd=worktree.path,
         check=False,
     )
     return [line.strip() for line in out.splitlines() if line.strip()]
+
+
+def commits_ahead(worktree: Worktree) -> int:
+    """How many commits this branch has that `origin/<base_branch>` doesn't.
+
+    The orchestrator's empty-execution guard uses this as the canonical
+    signal — if it returns 0, the executor session produced nothing
+    pushable and we should mark the proposal failed instead of letting
+    the verifier push an empty branch.
+    """
+    _refresh_base_ref(worktree)
+    out = _git(
+        ["rev-list", "--count", f"origin/{worktree.base_branch}..HEAD"],
+        cwd=worktree.path,
+        check=False,
+    )
+    try:
+        return int(out.strip())
+    except ValueError:
+        return 0
 
 
 def has_uncommitted_changes(worktree: Worktree) -> bool:
