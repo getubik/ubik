@@ -178,6 +178,16 @@ class AiderExecutor(Executor):
             "--no-stream",
             "--no-pretty",
             "--no-show-model-warnings",
+            # Force auto-commit explicitly. Aider 0.86+ treats `--auto-commits`
+            # as default-on but the behaviour can drift when a session is
+            # interrupted by mid-flow file additions (which happened on
+            # proposal 2d06e19e: Aider edited pyproject.toml then started
+            # explaining README.md, never auto-committed the original edit).
+            # Passing the flag explicitly locks the contract.
+            "--auto-commits",
+            # Disable Aider's own dotfile lookup so the daemon can't be
+            # surprised by a stale ~/.aider.conf landing on Forge.
+            "--no-suggest-shell-commands",
             "--openai-api-base", self.config.base_url,
             "--openai-api-key", api_key,
             "--model", self.config.model,

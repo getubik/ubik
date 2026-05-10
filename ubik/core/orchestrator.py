@@ -195,7 +195,26 @@ class Orchestrator:
         proposal.notes = (proposal.notes + "\n\n" + (result.notes or "")).strip()
 
         if result.outcome == ExecutorOutcome.SUCCESS:
-            proposal.state = ProposalState.READY_FOR_PR
+            # Empty-diff guard: Aider sometimes describes a change in its
+            # output ("here's what I'd add") without committing it (seen
+            # on proposal 2d06e19e — pyproject.toml ceiling pin). Without
+            # this check the state machine moves to READY_FOR_PR, the
+            # verifier pushes the empty branch, GitHub returns 422 with
+            # "No commits between main and auto/<id>" and the PR never
+            # opens. Treat zero file changes as a failed execution so
+            # the operator gets a real error instead of a silently-stuck
+            # proposal.
+            if not result.files_changed:
+                proposal.state = ProposalState.EXECUTION_FAILED
+                proposal.notes = (
+                    (proposal.notes or "")
+                    + "\n\nDetected zero file changes after Aider session. "
+                    "Most likely the model described the change without "
+                    "committing it. Re-run after tightening the prompt or "
+                    "re-pinning Aider's --auto-commits behaviour."
+                ).strip()
+            else:
+                proposal.state = ProposalState.READY_FOR_PR
         else:
             proposal.state = ProposalState.EXECUTION_FAILED
 
