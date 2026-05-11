@@ -1,0 +1,62 @@
+name: Publish to PyPI
+
+# Fires automatically when we push a vX.Y.Z tag, or manually via the
+# Actions UI ("Run workflow"). No API token lives in the repo — PyPI
+# verifies GitHub's OIDC identity via the trusted-publisher config at
+# https://pypi.org/manage/project/psssst/settings/publishing/
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build wheel + sdist
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine
+      - name: Build distribution
+        run: python -m build
+      - name: Twine check (catches malformed metadata before upload)
+        run: twine check dist/*
+      - name: Upload artifact for the publish job
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # Trusted publishing requires an OIDC identity token, which means
+    # this job needs `id-token: write`. The `environment` line lets us
+    # require manual approval in PyPI's UI before any actual upload —
+    # a nice safety net when a tag is pushed by mistake.
+    permissions:
+      id-token: write
+    environment:
+      name: pypi
+      url: https://pypi.org/project/psssst/
+    steps:
+      - name: Pull dist artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+      - name: Publish via trusted publisher
+        uses: pypa/gh-action-pypi-publish@release/v1
