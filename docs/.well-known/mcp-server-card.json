@@ -2,69 +2,87 @@
   "$schema": "https://modelcontextprotocol.io/schemas/mcp-server-card/1.0",
   "name": "ubik",
   "title": "Ubik",
-  "version": "0.0.1",
-  "status": "pre-alpha",
-  "description": "An AI resident engineer for your codebase. Whispers findings to your Telegram, proposes fixes with evidence, and ships them through a pluggable executor when you tap approve.",
+  "version": "0.1.5",
+  "status": "alpha",
+  "description": "Psssst! — an AI resident engineer for your codebase. Audits the repo, surfaces stale code / missing tests / inconsistent patterns / security smells into a structured markdown report, and keeps a searchable notebook of past findings. Pair the MCP surface with the autonomous daemon (`ubik run`) to also get Telegram-approved fixes shipped through Aider or the Claude Agent SDK.",
   "homepage": "https://psssst.dev",
   "repository": "https://github.com/getubik/ubik",
   "license": "Apache-2.0",
+  "install": {
+    "pip": "psssst[mcp]",
+    "command": "ubik mcp"
+  },
   "categories": [
     "code-review",
     "research",
     "agent",
-    "autonomous",
     "developer-tools"
   ],
-  "transports": ["stdio", "streamable-http"],
-  "auth": {
-    "oauth": {
-      "supported": true,
-      "required_for_remote": true,
-      "version": "2.1"
-    }
-  },
+  "transports": ["stdio"],
   "tools": [
     {
-      "name": "ubik.research",
-      "description": "Run a research session on a topic — codebase, competitors, tech trends. Returns a structured report."
-    },
-    {
-      "name": "ubik.audit_repo",
-      "description": "One-shot audit of a repository. Surfaces stale code, missing tests, inconsistent patterns, security smells."
-    },
-    {
-      "name": "ubik.propose_fix",
-      "description": "Generate a structured improvement proposal: severity, evidence, plan, risk."
-    },
-    {
-      "name": "ubik.notebook.search",
-      "description": "Semantic search across past research notebook entries (multi-project memory)."
+      "name": "ubik.audit",
+      "description": "Single-shot audit of a local repository. Reads the codebase, runs the researcher loop with extended thinking, writes a structured markdown report (TL;DR · findings with severity / evidence / fix / risk / ETA · open questions) into Ubik's notebook, and returns the report inline.",
+      "input": {
+        "path": "string (required) — absolute or relative path to the repository",
+        "project_name": "string (optional) — override project name on the report",
+        "max_tokens": "integer (optional, default 8000) — cap on the model reply"
+      }
     },
     {
       "name": "ubik.notebook.recent",
-      "description": "Return the N most recent notebook entries with their summaries."
-    }
-  ],
-  "resources": [
-    {
-      "uri_template": "ubik://notebook/{entry_id}",
-      "description": "A single archived research entry as markdown."
+      "description": "Return the N most recent notebook entries, newest first. Each carries title, summary, kind (audit / proposal / research), severity, tags, and a stable slug.",
+      "input": {
+        "n": "integer (default 10, 1-100)",
+        "project": "string (optional) — filter by project"
+      }
     },
     {
-      "uri_template": "ubik://proposals/{proposal_id}",
-      "description": "An active improvement proposal awaiting approval."
+      "name": "ubik.notebook.search",
+      "description": "Substring search across past notebook entries' titles, summaries, and tags. Returns matches newest-first.",
+      "input": {
+        "query": "string (required) — substring search",
+        "kind": "string (optional) — one of audit / daily / weekly / monthly / proposal / research"
+      }
+    },
+    {
+      "name": "ubik.notebook.read",
+      "description": "Fetch the full markdown body of a single notebook entry by slug. Use after `ubik.notebook.recent` or `ubik.notebook.search` to read details.",
+      "input": {
+        "slug": "string (required) — stable notebook entry slug"
+      }
     }
   ],
   "prompts": [
-    "ubik.competitor-scan",
-    "ubik.codebase-audit",
-    "ubik.security-review",
-    "ubik.architecture-review"
+    {
+      "name": "ubik-audit",
+      "description": "Run an Ubik audit on a repo path and summarise the TL;DR + highest-severity finding."
+    },
+    {
+      "name": "ubik-recent",
+      "description": "Show recent Ubik notebook entries grouped by project."
+    },
+    {
+      "name": "ubik-research",
+      "description": "Run an audit focused on a specific topic against the current repo."
+    }
   ],
+  "client_config_example": {
+    "mcpServers": {
+      "ubik": {
+        "command": "ubik",
+        "args": ["mcp"]
+      }
+    }
+  },
   "publisher": {
-    "name": "Ubik",
+    "name": "İsmail İbiloğlu",
     "url": "https://psssst.dev",
     "github": "getubik"
   },
-  "_note": "This file is a placeholder served from GitHub Pages until Sprint 2 lands the Python MCP server (which will serve a live, runtime-generated card from /.well-known/mcp-server-card)."
+  "_notes": {
+    "transports": "stdio only in 0.1.5. Streamable-HTTP + OAuth 2.1 are on the roadmap (see docs/roadmap.md, Sprint 2.4).",
+    "resources": "Not yet exposed — `ubik.notebook.read` returns the full body inline as text content. Resource URI templates land when HTTP transport ships.",
+    "honesty": "Every tool, prompt, and transport listed here is implemented and registered with the MCP server in `ubik/mcp/server.py`. Earlier card revisions advertised tools / resources / oauth that didn't exist; this version matches the code."
+  }
 }
