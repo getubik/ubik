@@ -1,5 +1,42 @@
 # Changelog
 
+## 0.1.3 — Z.AI Claude Code routing matches the official recipe
+
+Followed [docs.z.ai/devpack/tool/claude](https://docs.z.ai/devpack/tool/claude)
+exactly so the `claude_agent_sdk` executor talks to Z.AI's
+`/api/anthropic` proxy the same way Claude Code does.
+
+### Changed
+- `ClaudeAgentExecutor.run()` now sets **both** `ANTHROPIC_API_KEY`
+  (x-api-key header) **and** `ANTHROPIC_AUTH_TOKEN` (Bearer header)
+  when a custom `base_url` is configured. Z.AI's proxy reads the
+  Bearer; original Anthropic reads x-api-key; setting both keeps every
+  proxy happy without needing per-provider branching.
+- Also exports `API_TIMEOUT_MS=3000000` (50 minutes) per Z.AI's
+  recipe — the agent loop chews through that on large refactors.
+- All overrides are restored after each task so they don't leak into
+  other code in the same process.
+
+### Added
+- New wizard preset: **Z.AI · GLM via Claude Agent SDK** (key
+  `zai-claude`). Points at `https://api.z.ai/api/anthropic` with
+  `GLM-4.7` as the default model. Pair with
+  `executor.type: "claude_agent_sdk"` in `ubik.yaml` for end-to-end
+  GLM coding via the Anthropic-compatible surface.
+
+### How to use it
+
+```bash
+ubik init                    # pick "Z.AI · GLM via Claude Agent SDK"
+# then edit ubik.yaml:
+#   executor:
+#     type: claude_agent_sdk
+ubik run
+```
+
+You stay on the Z.AI Coding Plan (3× usage at a fraction of the cost
+per Z.AI's pitch); the SDK speaks Anthropic protocol; Z.AI translates.
+
 ## 0.1.2 — Claude Agent SDK now follows `llm.base_url`
 
 The Claude Agent SDK wraps the official `anthropic` Python client,

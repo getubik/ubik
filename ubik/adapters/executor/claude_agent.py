@@ -157,18 +157,33 @@ class ClaudeAgentExecutor(Executor):
             )
 
         # Custom-endpoint support — the SDK reads ANTHROPIC_BASE_URL +
-        # ANTHROPIC_API_KEY at construction time. When the user pointed
+        # auth credentials at construction time. When the user pointed
         # us at an Anthropic-compatible proxy (Z.AI's /api/anthropic,
         # OpenRouter, LiteLLM gateway, etc.), forward the credentials
         # through env vars and restore them on the way out so other
         # tasks in the same process don't inherit the override.
+        #
+        # We set BOTH ANTHROPIC_API_KEY (x-api-key header, anthropic
+        # SDK default) AND ANTHROPIC_AUTH_TOKEN (Bearer header, what
+        # Z.AI's Claude Code routing actually reads per
+        # docs.z.ai/devpack/tool/claude). Belt-and-braces — different
+        # proxies prefer different headers.
+        #
+        # API_TIMEOUT_MS=3000000 matches Z.AI's own Claude Code recipe;
+        # 50 minutes is generous but the agent loop can chew that on
+        # large refactors.
         saved_env: dict[str, str | None] = {}
+
+        def _override(key: str, value: str) -> None:
+            saved_env[key] = os.environ.get(key)
+            os.environ[key] = value
+
         if self.config.base_url:
-            saved_env["ANTHROPIC_BASE_URL"] = os.environ.get("ANTHROPIC_BASE_URL")
-            os.environ["ANTHROPIC_BASE_URL"] = self.config.base_url
+            _override("ANTHROPIC_BASE_URL", self.config.base_url)
+            _override("ANTHROPIC_AUTH_TOKEN", api_key)
+            _override("API_TIMEOUT_MS", "3000000")
         if self.config.api_key_env != "ANTHROPIC_API_KEY":
-            saved_env["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY")
-            os.environ["ANTHROPIC_API_KEY"] = api_key
+            _override("ANTHROPIC_API_KEY", api_key)
 
         try:
             outcome, exec_notes = await self._drive(query, ClaudeAgentOptions, wt, task)

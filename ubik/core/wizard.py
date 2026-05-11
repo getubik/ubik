@@ -49,6 +49,18 @@ PRESETS: list[ProviderPreset] = [
         api_key_env="Z_AI_API_KEY",
         model="glm-4.6",
     ),
+    ProviderPreset(
+        # Z.AI exposes an Anthropic-compatible surface so Claude Code
+        # (and our claude_agent_sdk executor) can route through GLM.
+        # See docs.z.ai/devpack/tool/claude. Pair this preset with
+        # `executor.type: "claude_agent_sdk"` in ubik.yaml.
+        key="zai-claude",
+        label="Z.AI · GLM via Claude Agent SDK  (Anthropic-compat proxy, pairs with executor.type: claude_agent_sdk)",
+        provider="anthropic",
+        base_url="https://api.z.ai/api/anthropic",
+        api_key_env="Z_AI_API_KEY",
+        model="GLM-4.7",
+    ),
     # ── Anthropic ──────────────────────────────────────────────────────
     ProviderPreset(
         key="anthropic",
