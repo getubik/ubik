@@ -1,0 +1,73 @@
+# Smithery server descriptor — https://smithery.ai
+#
+# When users install Ubik through Smithery, this file tells the registry
+# how to launch the MCP server and what configuration it needs.
+#
+# The same metadata is also served live at
+# https://psssst.dev/.well-known/mcp-server-card.json (richer schema).
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    required:
+      - Z_AI_API_KEY
+    properties:
+      Z_AI_API_KEY:
+        type: string
+        title: "Z.AI API key"
+        description: >-
+          API key for Z.AI (free with the GLM Coding Plan). Used as the
+          default researcher LLM for `ubik.audit` calls. Override the
+          provider in ubik.yaml if you'd rather use Anthropic / OpenAI /
+          Ollama / Kimi / MiniMax.
+      ANTHROPIC_API_KEY:
+        type: string
+        title: "Anthropic API key (optional)"
+        description: >-
+          Only needed if you switch the researcher LLM to Anthropic
+          directly (Claude Sonnet 4.6 / Opus 4.7) in ubik.yaml.
+      UBIK_CONFIG:
+        type: string
+        title: "Path to ubik.yaml (optional)"
+        description: >-
+          Defaults to `./ubik.yaml`. The MCP server runs in read-only
+          mode (no daemon, no Telegram, no executor) when no config is
+          present — only the four `ubik.notebook.*` and `ubik.audit`
+          tools are exposed.
+  commandFunction: |-
+    (config) => ({
+      command: "ubik",
+      args: ["mcp"],
+      env: {
+        Z_AI_API_KEY: config.Z_AI_API_KEY,
+        ...(config.ANTHROPIC_API_KEY && { ANTHROPIC_API_KEY: config.ANTHROPIC_API_KEY }),
+        ...(config.UBIK_CONFIG && { UBIK_CONFIG: config.UBIK_CONFIG }),
+      },
+    })
+
+# pip-installable package — Smithery uses this when the user picks
+# "Install" instead of "Run from source".
+install:
+  pip: psssst[mcp]
+  python: ">=3.10"
+
+# Surface metadata. The MCP server's `list_tools` is the authoritative
+# tool inventory; this is just a redundant hint for Smithery's UI.
+tools:
+  - name: ubik.audit
+    summary: One-shot codebase audit. Returns a structured markdown report.
+  - name: ubik.notebook.recent
+    summary: Recent notebook entries (audits / proposals / research) newest-first.
+  - name: ubik.notebook.search
+    summary: Substring search across past notebook titles, summaries, tags.
+  - name: ubik.notebook.read
+    summary: Fetch a single notebook entry's full markdown body by slug.
+
+prompts:
+  - name: ubik-audit
+    summary: Audit a repo and summarise the TL;DR + top finding.
+  - name: ubik-recent
+    summary: Show recent notebook entries grouped by project.
+  - name: ubik-research
+    summary: Topic-focused audit of the current repository.

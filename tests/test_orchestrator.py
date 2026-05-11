@@ -140,6 +140,25 @@ def _make_setup(
 # ── Tests ───────────────────────────────────────────────────────────────
 
 
+def test_render_proposal_body_signals_evidence_overflow(tmp_path: Path) -> None:
+    """When a proposal carries > 5 evidence items, the bridge body shows
+    the first 5 plus a '+N more' hint so users know to tap Diff."""
+    orch, _, _, _, _ = _make_setup(tmp_path)
+    proposal = Proposal.new(
+        project="demo",
+        title="t",
+        severity="medium",
+        summary="s",
+        plan="p",
+        evidence=[f"line {i}" for i in range(8)],  # 8 > 5
+    )
+    body = orch._render_proposal_body(proposal)
+    assert "line 0" in body and "line 4" in body
+    # 6th evidence item must NOT be inline; it's behind the "more" hint.
+    assert "line 5" not in body
+    assert "and 3 more" in body
+
+
 @pytest.mark.asyncio
 async def test_publish_moves_draft_to_pending(tmp_path: Path) -> None:
     orch, store, bridge, _, proposal = _make_setup(tmp_path)
@@ -301,8 +320,12 @@ async def test_approve_with_verifier_opens_pr(tmp_path: Path) -> None:
     after = store.load(proposal.id)
     assert after.state == ProposalState.PR_OPENED
     assert after.pr_url == "https://github.com/getubik/ubik/pull/42"
-    # Two notifies: post-execution summary + post-verify summary.
-    assert any("PR ready" in n.title for n in bridge.notifies)
+    # Single notify path: when the verifier will open a PR we skip the
+    # intermediate "branch ready" message — otherwise the user gets two
+    # phone vibrations for the same logical event.
+    titles = [n.title for n in bridge.notifies]
+    assert any("PR ready" in t for t in titles), titles
+    assert not any("branch ready" in t for t in titles), titles
 
 
 @pytest.mark.asyncio

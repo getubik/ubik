@@ -6,8 +6,10 @@
 
 🤫 [psssst.dev](https://psssst.dev) · `pip install psssst`
 
+[![PyPI](https://img.shields.io/pypi/v/psssst.svg?label=pip%20install%20psssst)](https://pypi.org/project/psssst/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
-[![Status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange.svg)](#)
+[![Status: alpha](https://img.shields.io/badge/status-alpha-yellow.svg)](#)
+[![CI](https://github.com/getubik/ubik/actions/workflows/ci.yml/badge.svg)](https://github.com/getubik/ubik/actions/workflows/ci.yml)
 
 > **Ubik is the product. "Pssst!" is the noise it makes when it's about to tell you something.**
 
@@ -140,6 +142,11 @@ grant included.
 
 ## Status
 
-Pre-alpha. Not yet on PyPI / npm. First stable release: see [Roadmap](docs/roadmap.md).
+Alpha — `pip install psssst` (v0.1.5 live on PyPI · CI matrix green on
+py3.10–3.13 × ubuntu / macOS / Windows). The autonomous daemon, the
+MCP server, the wizard, and the Telegram bridge all ship in the
+package today. Streamable-HTTP transport for `ubik mcp`, MCP registry
+submission, and a richer notebook backend are the next milestones —
+see the [Roadmap](docs/roadmap.md).
 
-Built by [Ubik](https://github.com/getubik). Inspired by Philip K. Dick.
+Built by [ANOTS](https://anots.com). Inspired by Philip K. Dick.

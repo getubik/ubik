@@ -367,21 +367,28 @@ _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
 _ITALIC_RE = re.compile(r"(?<![\*_])\*([^*\n]+?)\*(?!\*)")
 _INLINE_CODE_RE = re.compile(r"`([^`\n]+)`")
 _LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+# Fenced code block: ```optional-lang\n...\n``` — DOTALL so newlines match.
+_FENCED_CODE_RE = re.compile(r"```([^\n]*)\n(.*?)```", re.DOTALL)
 
 
 def _markdown_lite_to_html(text: str) -> str:
     """Convert the small markdown subset our digest emits to Telegram-HTML.
 
     Telegram-HTML supports a handful of tags: <b>, <i>, <u>, <s>, <code>,
-    <pre>, <a href=...>. Anything else is plain text. We only need:
-      • **bold**     → <b>…</b>
-      • *italic*     → <i>…</i>   (single-asterisk, not part of **)
-      • `inline`     → <code>…</code>
-      • [text](url)  → <a href="url">text</a>
+    <pre>, <a href=...>. Anything else is plain text. We handle:
+      • ```fenced```  → <pre>…</pre>   (multiline, must be processed FIRST
+                                        so inline-` doesn't eat the fences)
+      • **bold**      → <b>…</b>
+      • *italic*      → <i>…</i>       (single-asterisk, not part of **)
+      • `inline`      → <code>…</code>
+      • [text](url)   → <a href="url">text</a>
     Everything else gets HTML-escaped so the message renders cleanly.
     """
     # Step 1: extract spans we want to preserve, replacing them with
     # placeholders so the bulk escape doesn't mangle their syntax.
+    # ORDER MATTERS: fenced first (greedy multiline), then links, then
+    # inline code, then bold, then italic. Each later rule already
+    # ignores the stashed placeholders.
     spans: list[str] = []
 
     def _stash(html_fragment: str) -> str:
@@ -389,6 +396,10 @@ def _markdown_lite_to_html(text: str) -> str:
         spans.append(html_fragment)
         return token
 
+    text = _FENCED_CODE_RE.sub(
+        lambda m: _stash(f"<pre>{_escape_html(m.group(2))}</pre>"),
+        text,
+    )
     text = _LINK_RE.sub(
         lambda m: _stash(f'<a href="{_escape_html(m.group(2))}">{_escape_html(m.group(1))}</a>'),
         text,

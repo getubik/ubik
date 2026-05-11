@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.1.6 — Telegram polish + Smithery descriptor + honest README
+
+### Added
+- **`smithery.yaml`** at the repo root — Smithery (https://smithery.ai)
+  ingests this to surface Ubik in its MCP registry. Config schema
+  declares the env vars users must supply (`Z_AI_API_KEY`,
+  `ANTHROPIC_API_KEY` optional, `UBIK_CONFIG` optional) and the
+  command function builds the `ubik mcp` invocation.
+
+### Changed — Telegram message ergonomics
+- **No more double-vibration.** When the verifier is about to open a
+  PR (executor succeeded + files changed + verifier configured),
+  the orchestrator skips the intermediate "branch ready" notify.
+  The user gets a single "PR ready" message instead of two pings for
+  the same logical event.
+- Proposals with **> 5 evidence items** now show the first 5 inline
+  plus a "_…and N more — tap 👁 Diff for the full list_" hint. Before,
+  extra evidence was silently dropped.
+- **Fenced code blocks** (```` ``` ````) inside proposal/audit bodies
+  now render as `<pre>…</pre>` in Telegram instead of getting eaten
+  by the inline-`code` regex. LLMs often emit fenced YAML/JSON in
+  proposals; this preserves them faithfully.
+
+### Changed — README honesty
+- Status badge: `pre-alpha` → `alpha`.
+- Status section: was claiming "Not yet on PyPI / npm" — now reflects
+  v0.1.5 live on PyPI + CI matrix green + named the actual gaps
+  (HTTP transport, MCP registry submission, richer notebook).
+- Added PyPI version badge + CI status badge. Switched the "Built by"
+  attribution from `Ubik` to `ANOTS` (parent brand).
+
+### Tests
+- 123 passed / 1 skipped (was 120) — +3 new: two for the Telegram
+  fenced-code-block rendering, one for the orchestrator's evidence-
+  overflow hint.
+
 ## 0.1.5 — First-time PyPI ship + critical bug fix in Claude SDK routing
 
 ### Fixed

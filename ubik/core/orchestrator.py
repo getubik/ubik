@@ -229,29 +229,36 @@ class Orchestrator:
 
         self.store.save(proposal)
 
-        # Post a status update to the bridge so the user sees what happened.
-        try:
-            await self._post_execution_summary(proposal, result)
-        except Exception as e:  # never block on bridge errors
-            logger.warning("Post-execution bridge update failed: %s", e)
-
-        # If executor succeeded AND a verifier is configured, push +
-        # open the PR right after. State moves to PR_OPENED on success.
-        # `result.files_changed` is the same gate the empty-diff guard
-        # above uses; without it the verifier would push an empty branch
-        # and GitHub would reject the PR with 422 (No commits between).
-        if (
+        # Decide whether the verifier will run next. When it will, the
+        # "branch ready" intermediate notify is redundant — the user
+        # gets a single "PR ready" (or "PR failed") message instead.
+        # Eliminates the double-ping double-vibration UX problem.
+        will_open_pr = (
             result.outcome == ExecutorOutcome.SUCCESS
             and result.files_changed
             and self.verifier is not None
             and result.branch
-        ):
+        )
+
+        if not will_open_pr:
+            # Only ping the bridge directly when no PR-open step is coming.
+            try:
+                await self._post_execution_summary(proposal, result)
+            except Exception as e:  # never block on bridge errors
+                logger.warning("Post-execution bridge update failed: %s", e)
+        else:
             try:
                 await self._open_pr(proposal, result)
             except Exception as e:
                 logger.error("Verifier crashed: %s", e, exc_info=True)
                 proposal.notes = (proposal.notes + f"\n\nVerifier crashed: {e}").strip()
                 self.store.save(proposal)
+                # Verifier blew up — fall back to a regular execution
+                # summary so the user still hears about the success.
+                try:
+                    await self._post_execution_summary(proposal, result)
+                except Exception:
+                    pass
 
         return result
 
@@ -357,6 +364,9 @@ class Orchestrator:
             lines.append("")
             lines.append("**Evidence**")
             lines.extend(f"• {e}" for e in p.evidence[:5])
+            extra = len(p.evidence) - 5
+            if extra > 0:
+                lines.append(f"_…and {extra} more — tap 👁 Diff for the full list_")
         if p.plan:
             lines.append("")
             lines.append("**Plan**")

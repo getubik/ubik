@@ -64,6 +64,27 @@ def test_markdown_lite_handles_dashes_and_dots_unescaped() -> None:
     assert "\\" not in out
 
 
+def test_markdown_lite_preserves_fenced_code_block() -> None:
+    """Triple-backtick fences become <pre>...</pre> with HTML-safe content."""
+    md = "before\n```python\ndef hi():\n    print('x')\n```\nafter"
+    out = _markdown_lite_to_html(md)
+    assert (
+        "<pre>def hi():\n    print(&#x27;x&#x27;)\n</pre>" in out
+        or "<pre>def hi():\n    print('x')\n</pre>" in out
+    )
+    assert "before" in out and "after" in out
+    assert "```" not in out
+
+
+def test_markdown_lite_fenced_block_wins_over_inline_backticks() -> None:
+    """When both fenced and inline backticks appear, fence is parsed first."""
+    md = "intro `inline` then\n```\nblock with `inline-looking` content\n```\nend"
+    out = _markdown_lite_to_html(md)
+    assert "<code>inline</code>" in out  # inline outside the fence stays
+    assert "<pre>block with `inline-looking` content\n</pre>" in out
+    assert "```" not in out
+
+
 def test_render_html_full_message() -> None:
     bridge = TelegramBridge(TelegramConfig(bot_token="x", chat_ids=[1], parse_mode="HTML"))
     msg = NotifyMessage(
