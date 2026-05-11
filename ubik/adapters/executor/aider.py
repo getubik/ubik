@@ -20,16 +20,15 @@ Failure modes we handle:
   • test command fails after aider succeeds → outcome=FAILED
   • subprocess hangs past time_cap_seconds  → outcome=TIMED_OUT, kill -9
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 import os
 import shutil
-import subprocess
 import time
 from dataclasses import dataclass
-from pathlib import Path
 
 from ubik.tools.git import (
     Worktree,
@@ -40,10 +39,9 @@ from ubik.tools.git import (
     files_changed,
     has_uncommitted_changes,
     head_sha,
-    remove_worktree,
 )
 
-from .base import Executor, ExecutionResult, ExecutorOutcome, ExecutorTask
+from .base import ExecutionResult, Executor, ExecutorOutcome, ExecutorTask
 
 logger = logging.getLogger(__name__)
 
@@ -161,8 +159,7 @@ class AiderExecutor(Executor):
             )
             outcome = ExecutorOutcome.FAILED
             exec_notes = (
-                (exec_notes or "")
-                + "\n\nNo new commits on the worktree branch — Aider "
+                (exec_notes or "") + "\n\nNo new commits on the worktree branch — Aider "
                 "may have described the change in markdown without "
                 "committing it. Marked as failed so the verifier "
                 "doesn't push an empty branch."
@@ -216,10 +213,14 @@ class AiderExecutor(Executor):
             # Disable Aider's own dotfile lookup so the daemon can't be
             # surprised by a stale ~/.aider.conf landing on Forge.
             "--no-suggest-shell-commands",
-            "--openai-api-base", self.config.base_url,
-            "--openai-api-key", api_key,
-            "--model", self.config.model,
-            "--message", message,
+            "--openai-api-base",
+            self.config.base_url,
+            "--openai-api-key",
+            api_key,
+            "--model",
+            self.config.model,
+            "--message",
+            message,
         ]
         if self.config.extra_flags:
             cmd.extend(self.config.extra_flags)
@@ -240,9 +241,7 @@ class AiderExecutor(Executor):
             return (ExecutorOutcome.FAILED, "Aider failed to launch in 10s")
 
         try:
-            stdout, _ = await asyncio.wait_for(
-                proc.communicate(), timeout=task.time_cap_seconds
-            )
+            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=task.time_cap_seconds)
         except asyncio.TimeoutError:
             proc.kill()
             await proc.wait()

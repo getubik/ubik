@@ -1,8 +1,8 @@
 """Tests for the audit digest extractor."""
+
 from __future__ import annotations
 
 from ubik.core.summarize import digest_audit, render_telegram_body
-
 
 SAMPLE_AUDIT = """\
 # Pssst! Audit · ubik

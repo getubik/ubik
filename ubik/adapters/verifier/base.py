@@ -15,6 +15,7 @@ We DO NOT auto-merge. Final gate is always the human eyeball.
 Sprint 2.3b/p6 ships only the GitHub adapter (gh CLI subprocess).
 GitLab / Bitbucket adapters slot in via the same Protocol.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass

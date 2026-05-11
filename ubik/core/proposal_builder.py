@@ -6,14 +6,14 @@ The audit gives us a markdown report; ``extract_findings`` (in
 out of it. This module is the bridge from those blocks to
 ``Proposal`` objects the orchestrator can publish.
 """
+
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from ubik.core.proposal import Proposal
 from ubik.core.summarize import FindingExtract
-
 
 _SEVERITY_RANK = {"low": 1, "medium": 2, "high": 3, "critical": 4, "unknown": 0}
 

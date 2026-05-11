@@ -13,6 +13,7 @@ Resolution rules (in order):
 We avoid pulling in the ``platformdirs`` dependency for one helper —
 the rules above are stable enough to inline.
 """
+
 from __future__ import annotations
 
 import os

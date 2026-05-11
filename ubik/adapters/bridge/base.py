@@ -11,6 +11,7 @@ forget message delivery for `ubik audit --notify`. The **propose**
 half (inline-keyboard approval, callbacks, decision capture) lands
 when the executor wires up.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -20,6 +21,7 @@ from typing import Protocol
 
 class Severity(str, Enum):
     """Proposal urgency. Mirrors the audit severities."""
+
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
@@ -28,10 +30,11 @@ class Severity(str, Enum):
 
 class Decision(str, Enum):
     """The approver's reply on a proposal."""
+
     APPROVED = "approved"
     REJECTED = "rejected"
-    REFINE = "refine"          # send back with comment
-    PENDING = "pending"        # not yet answered
+    REFINE = "refine"  # send back with comment
+    PENDING = "pending"  # not yet answered
 
 
 @dataclass(slots=True)

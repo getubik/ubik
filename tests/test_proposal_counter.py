@@ -1,4 +1,5 @@
 """Cost-cap counter: file-backed, date-keyed, survives import."""
+
 from __future__ import annotations
 
 import json

@@ -1,4 +1,5 @@
 """Bridge adapters — how Ubik whispers to humans."""
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -30,13 +31,13 @@ __all__ = [
     "Severity",
     "TelegramBridge",
     "TelegramConfig",
+    "bridge_from_config",
     "telegram_from_config",
     "telegram_from_env",
-    "bridge_from_config",
 ]
 
 
-def bridge_from_config(cfg: "UbikConfig") -> Bridge:
+def bridge_from_config(cfg: UbikConfig) -> Bridge:
     """Resolve a Bridge from ``UbikConfig.bridge.type``.
 
     Single-dispatch on the validated enum value. Loader rejects unknown
@@ -45,11 +46,13 @@ def bridge_from_config(cfg: "UbikConfig") -> Bridge:
     """
     btype = cfg.bridge.type
     if btype == "telegram":
-        return telegram_from_config({
-            "token_env": cfg.bridge.token_env,
-            "chat_id_env": cfg.bridge.chat_id_env,
-            "approver_chat_ids": cfg.bridge.approver_chat_ids,
-        })
+        return telegram_from_config(
+            {
+                "token_env": cfg.bridge.token_env,
+                "chat_id_env": cfg.bridge.chat_id_env,
+                "approver_chat_ids": cfg.bridge.approver_chat_ids,
+            }
+        )
     raise RuntimeError(
         f"bridge.type={btype!r} reached the factory but is not in the "
         "supported set. This is a bug — the loader should have rejected "

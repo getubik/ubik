@@ -23,15 +23,16 @@ Transports:
 
 Sprint 2.2 ships stdio only. HTTP wires up in 2.4.
 """
+
 from __future__ import annotations
 
-import asyncio
 import logging
 from pathlib import Path
 from typing import Any
 
 from ubik.adapters.llm import llm_from_config
-from ubik.core.config import UbikConfig, load as load_config
+from ubik.core.config import UbikConfig
+from ubik.core.config import load as load_config
 from ubik.core.notebook import Notebook
 from ubik.core.researcher import run_audit
 
@@ -171,9 +172,7 @@ def _build_server(cfg: UbikConfig, notebook: Notebook):
             Tool,
         )
     except ImportError as e:
-        raise RuntimeError(
-            "MCP server requires the 'mcp' extra: pip install psssst[mcp]"
-        ) from e
+        raise RuntimeError("MCP server requires the 'mcp' extra: pip install psssst[mcp]") from e
 
     server: Server = Server("ubik")
 
@@ -366,9 +365,7 @@ async def run_stdio(config_path: Path | None = None, repo_path: Path | None = No
     try:
         from mcp.server.stdio import stdio_server
     except ImportError as e:
-        raise RuntimeError(
-            "MCP server requires the 'mcp' extra: pip install psssst[mcp]"
-        ) from e
+        raise RuntimeError("MCP server requires the 'mcp' extra: pip install psssst[mcp]") from e
 
     cfg = load_config(config_path, repo_path=repo_path)
     nb_root = (Path(cfg.project.repo_path) / cfg.notebook.path).resolve()
@@ -376,8 +373,7 @@ async def run_stdio(config_path: Path | None = None, repo_path: Path | None = No
 
     server = _build_server(cfg, notebook)
 
-    logger.info("Ubik MCP server starting (stdio) · notebook=%s · llm=%s",
-                nb_root, cfg.llm.model)
+    logger.info("Ubik MCP server starting (stdio) · notebook=%s · llm=%s", nb_root, cfg.llm.model)
 
     async with stdio_server() as (read_stream, write_stream):
         await server.run(read_stream, write_stream, server.create_initialization_options())

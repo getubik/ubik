@@ -8,6 +8,7 @@ naturally resets it without any cron job.
 Single-writer assumption: only the daemon increments. Tests construct
 their own counter against a tmp dir.
 """
+
 from __future__ import annotations
 
 import json

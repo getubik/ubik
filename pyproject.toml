@@ -161,7 +161,20 @@ select = [
     "SIM",  # flake8-simplify
     "RUF",  # ruff-specific
 ]
-ignore = ["E501"]  # line length is handled by formatter
+ignore = [
+    "E501",    # line length is handled by formatter
+    "SIM105",  # try/except/pass — fine intent (silenced bridge errors etc.); contextlib.suppress is stylistic preference
+    "RUF001",  # ambiguous unicode (en-dashes) — intentional in researcher prompts and prose docstrings
+    "RUF059",  # unused unpacked variable — common pattern in tests where fixture returns a tuple
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Typer's argument-default idiom (typer.Option / typer.Argument) is the
+# documented API; B008 flags it as a false positive.
+"ubik/cli.py" = ["B008"]
+# Tests assemble dict fixtures inline; dict(...) is more readable than
+# nested literals there.
+"tests/*" = ["C408"]
 
 [tool.ruff.format]
 # 99.9% Black-compatible. Keep the default — no preview style.

@@ -23,6 +23,7 @@ Lifecycle:
 Persistence is keyed by `proposal_id` (UUID4). Filesystem-backed today;
 Postgres later when multi-tenant kicks in.
 """
+
 from __future__ import annotations
 
 import json
@@ -35,14 +36,14 @@ from pathlib import Path
 
 class ProposalState(str, Enum):
     DRAFT = "draft"
-    PENDING = "pending"            # Telegram message sent, awaiting tap
-    APPROVED = "approved"          # User said yes, executor not started yet
-    REFINING = "refining"          # User asked for revision
+    PENDING = "pending"  # Telegram message sent, awaiting tap
+    APPROVED = "approved"  # User said yes, executor not started yet
+    REFINING = "refining"  # User asked for revision
     EXECUTION_RUNNING = "execution_running"
     READY_FOR_PR = "ready_for_pr"  # Executor green, awaiting verifier
-    PR_OPENED = "pr_opened"        # Verifier created the PR; awaiting merge
-    DONE = "done"                  # Merged, deployed, smoke-checked
-    REJECTED = "rejected"          # User declined or executor failed
+    PR_OPENED = "pr_opened"  # Verifier created the PR; awaiting merge
+    DONE = "done"  # Merged, deployed, smoke-checked
+    REJECTED = "rejected"  # User declined or executor failed
     EXECUTION_FAILED = "execution_failed"
 
 
@@ -53,7 +54,7 @@ class Proposal:
     id: str
     project: str
     title: str
-    severity: str   # low | medium | high | critical
+    severity: str  # low | medium | high | critical
     summary: str
     plan: str
     evidence: list[str] = field(default_factory=list)
@@ -80,7 +81,7 @@ class Proposal:
     notes: str = ""
 
     @classmethod
-    def new(cls, **kwargs) -> "Proposal":
+    def new(cls, **kwargs) -> Proposal:
         """Create a draft proposal with a fresh UUID + timestamp."""
         now = datetime.now(timezone.utc).isoformat()
         return cls(
@@ -163,14 +164,16 @@ class ProposalStore:
                 item["updated_at"] = proposal.updated_at
                 break
         else:
-            index.append({
-                "id": proposal.id,
-                "title": proposal.title,
-                "severity": proposal.severity,
-                "state": proposal.state.value,
-                "created_at": proposal.created_at,
-                "updated_at": proposal.updated_at,
-            })
+            index.append(
+                {
+                    "id": proposal.id,
+                    "title": proposal.title,
+                    "severity": proposal.severity,
+                    "state": proposal.state.value,
+                    "created_at": proposal.created_at,
+                    "updated_at": proposal.updated_at,
+                }
+            )
         self._index_path.write_text(
             json.dumps(index, ensure_ascii=False, indent=2),
             encoding="utf-8",

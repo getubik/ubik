@@ -1,6 +1,8 @@
 """Tests for the Telegram MarkdownLite → HTML rendering."""
+
 from __future__ import annotations
 
+from ubik.adapters.bridge.base import NotifyMessage, Severity
 from ubik.adapters.bridge.telegram import (
     TelegramBridge,
     TelegramConfig,
@@ -8,7 +10,6 @@ from ubik.adapters.bridge.telegram import (
     _escape_md_v2,
     _markdown_lite_to_html,
 )
-from ubik.adapters.bridge.base import NotifyMessage, Severity
 
 
 def test_escape_html_handles_three_reserved_chars() -> None:
@@ -64,9 +65,7 @@ def test_markdown_lite_handles_dashes_and_dots_unescaped() -> None:
 
 
 def test_render_html_full_message() -> None:
-    bridge = TelegramBridge(
-        TelegramConfig(bot_token="x", chat_ids=[1], parse_mode="HTML")
-    )
+    bridge = TelegramBridge(TelegramConfig(bot_token="x", chat_ids=[1], parse_mode="HTML"))
     msg = NotifyMessage(
         title="Pssst! Audit · ubik",
         body_markdown="**3 findings** · 1 critical\n\n- Foo & bar\n- Baz",
@@ -87,9 +86,7 @@ def test_render_html_full_message() -> None:
 
 def test_render_truncates_at_max_chars() -> None:
     bridge = TelegramBridge(
-        TelegramConfig(
-            bot_token="x", chat_ids=[1], parse_mode="HTML", max_message_chars=200
-        )
+        TelegramConfig(bot_token="x", chat_ids=[1], parse_mode="HTML", max_message_chars=200)
     )
     msg = NotifyMessage(title="t", body_markdown="x" * 1000)
     text = bridge._render(msg)

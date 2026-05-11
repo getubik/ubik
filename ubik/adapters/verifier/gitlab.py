@@ -15,6 +15,7 @@ Two paths, same outcome:
 
 We never auto-merge. Always returns a URL for the human to review.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -28,7 +29,7 @@ from urllib.parse import quote
 
 import httpx
 
-from .base import VerifyOutcome, VerifyResult, VerifyTask, Verifier
+from .base import Verifier, VerifyOutcome, VerifyResult, VerifyTask
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +48,7 @@ class GitLabVerifierConfig:
     push_remote: str = "origin"
 
 
-_REPO_SLUG_RE = re.compile(
-    r"gitlab\.com[:/](?P<slug>[^/]+(?:/[^/.]+)+?)(?:\.git)?$"
-)
+_REPO_SLUG_RE = re.compile(r"gitlab\.com[:/](?P<slug>[^/]+(?:/[^/.]+)+?)(?:\.git)?$")
 
 
 class GitLabVerifier(Verifier):
@@ -132,7 +131,10 @@ class GitLabVerifier(Verifier):
             out = subprocess.run(
                 ["git", "remote", "get-url", self.config.push_remote],
                 cwd=str(task.repo_path),
-                capture_output=True, text=True, timeout=5, check=False,
+                capture_output=True,
+                text=True,
+                timeout=5,
+                check=False,
             )
         except (OSError, subprocess.SubprocessError):
             return None
@@ -141,15 +143,24 @@ class GitLabVerifier(Verifier):
         return m.group("slug") if m else None
 
     async def _mr_via_glab(
-        self, task: VerifyTask, slug: str,
+        self,
+        task: VerifyTask,
+        slug: str,
     ) -> tuple[str | None, int | None, str]:
         cmd = [
-            self.config.glab_binary, "mr", "create",
-            "--repo", slug,
-            "--source-branch", task.branch,
-            "--target-branch", task.base_branch,
-            "--title", task.title or f"Ubik · {task.branch}",
-            "--description", task.body or "",
+            self.config.glab_binary,
+            "mr",
+            "create",
+            "--repo",
+            slug,
+            "--source-branch",
+            task.branch,
+            "--target-branch",
+            task.base_branch,
+            "--title",
+            task.title or f"Ubik · {task.branch}",
+            "--description",
+            task.body or "",
             "--yes",  # don't prompt
         ]
         if task.draft:
@@ -185,13 +196,19 @@ class GitLabVerifier(Verifier):
         return url, num, "via glab CLI"
 
     async def _mr_via_rest(
-        self, task: VerifyTask, slug: str,
+        self,
+        task: VerifyTask,
+        slug: str,
     ) -> tuple[str | None, int | None, str]:
         token = os.environ.get(self.config.token_env)
         if not token:
-            return None, None, (
-                f"glab CLI not on PATH and {self.config.token_env} env var "
-                "not set — cannot open MR. Install glab or set the token."
+            return (
+                None,
+                None,
+                (
+                    f"glab CLI not on PATH and {self.config.token_env} env var "
+                    "not set — cannot open MR. Install glab or set the token."
+                ),
             )
 
         # GitLab projects can be referenced by URL-encoded path.

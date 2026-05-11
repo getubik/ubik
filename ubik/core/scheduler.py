@@ -14,13 +14,15 @@ intentionally simple: each job is a coroutine, scheduler awaits each
 job sequentially per cycle (so jobs don't overlap themselves). If you
 need parallel execution, schedule them on different timers.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
-from dataclasses import dataclass, field
+from collections.abc import Awaitable, Callable
+from dataclasses import dataclass
 from datetime import datetime, time, timedelta
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -57,14 +59,18 @@ class Scheduler:
             raise ValueError(f"daily_at expects 'HH:MM', got {hhmm!r}") from e
 
         next_fire = self._next_daily(t)
-        self._jobs.append(_Job(
-            name=name or f"daily@{hhmm}",
-            next_fire_at=next_fire,
-            period_seconds=None,
-            daily_time=t,
-            coro_factory=coro_factory,
-        ))
-        logger.info("Scheduler: daily_at %s registered (next fire: %s)", hhmm, next_fire.isoformat())
+        self._jobs.append(
+            _Job(
+                name=name or f"daily@{hhmm}",
+                next_fire_at=next_fire,
+                period_seconds=None,
+                daily_time=t,
+                coro_factory=coro_factory,
+            )
+        )
+        logger.info(
+            "Scheduler: daily_at %s registered (next fire: %s)", hhmm, next_fire.isoformat()
+        )
 
     def every_minutes(self, n: int, coro_factory: JobCoro, *, name: str | None = None) -> None:
         if n <= 0:
@@ -78,23 +84,27 @@ class Scheduler:
 
     def once_in(self, seconds: float, coro_factory: JobCoro, *, name: str | None = None) -> None:
         next_fire = datetime.now() + timedelta(seconds=seconds)
-        self._jobs.append(_Job(
-            name=name or f"once-in-{seconds:.0f}s",
-            next_fire_at=next_fire,
-            period_seconds=None,
-            daily_time=None,
-            coro_factory=coro_factory,
-        ))
+        self._jobs.append(
+            _Job(
+                name=name or f"once-in-{seconds:.0f}s",
+                next_fire_at=next_fire,
+                period_seconds=None,
+                daily_time=None,
+                coro_factory=coro_factory,
+            )
+        )
 
     def _every_seconds(self, n: float, coro: JobCoro, *, name: str) -> None:
         next_fire = datetime.now() + timedelta(seconds=n)
-        self._jobs.append(_Job(
-            name=name,
-            next_fire_at=next_fire,
-            period_seconds=n,
-            daily_time=None,
-            coro_factory=coro,
-        ))
+        self._jobs.append(
+            _Job(
+                name=name,
+                next_fire_at=next_fire,
+                period_seconds=n,
+                daily_time=None,
+                coro_factory=coro,
+            )
+        )
         logger.info("Scheduler: %s registered (next fire: %s)", name, next_fire.isoformat())
 
     # ── runtime ─────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ Uses fakes for Bridge + Executor — no Telegram round-trip, no LLM.
 Validates state transitions, double-tap idempotency, and the
 execute → READY_FOR_PR / EXECUTION_FAILED branches.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -18,7 +19,6 @@ from ubik.adapters.bridge import (
     ProposalMessage,
 )
 from ubik.adapters.executor import (
-    Executor,
     ExecutionResult,
     ExecutorOutcome,
     ExecutorTask,
@@ -27,7 +27,6 @@ from ubik.adapters.verifier import VerifyOutcome, VerifyResult, VerifyTask
 from ubik.core.notebook import Notebook
 from ubik.core.orchestrator import Orchestrator
 from ubik.core.proposal import Proposal, ProposalState, ProposalStore
-
 
 # ── Fakes ───────────────────────────────────────────────────────────────
 
@@ -47,9 +46,13 @@ class FakeBridge:
         return {"chat_id": "fake-chat", "message_id": str(len(self.proposals))}
 
     async def edit_message(self, chat_id, message_id, new_text, *, keep_keyboard=False):
-        self.edits.append({
-            "chat_id": chat_id, "message_id": message_id, "text": new_text,
-        })
+        self.edits.append(
+            {
+                "chat_id": chat_id,
+                "message_id": message_id,
+                "text": new_text,
+            }
+        )
         return True
 
 
@@ -66,7 +69,7 @@ class FakeVerifier:
                 outcome=VerifyOutcome.OPENED,
                 proposal_id=task.proposal_id,
                 branch=task.branch,
-                pr_url=f"https://github.com/getubik/ubik/pull/42",
+                pr_url="https://github.com/getubik/ubik/pull/42",
                 pr_number=42,
                 notes="ok",
             )
@@ -112,8 +115,11 @@ def _make_setup(
     bridge = FakeBridge()
     executor = FakeExecutor(outcome=executor_outcome)
     orch = Orchestrator(
-        store=store, notebook=notebook, bridge=bridge,
-        executor=executor, verifier=verifier,
+        store=store,
+        notebook=notebook,
+        bridge=bridge,
+        executor=executor,
+        verifier=verifier,
     )
 
     proposal = Proposal.new(
@@ -189,9 +195,14 @@ async def test_approve_executor_failure_marks_execution_failed(tmp_path: Path) -
     )
     await orch.publish(proposal.id)
 
-    await orch.on_approval(ApprovalEvent(
-        proposal_id=proposal.id, decision=Decision.APPROVED, by="i", at="t",
-    ))
+    await orch.on_approval(
+        ApprovalEvent(
+            proposal_id=proposal.id,
+            decision=Decision.APPROVED,
+            by="i",
+            at="t",
+        )
+    )
 
     after = store.load(proposal.id)
     assert after.state == ProposalState.EXECUTION_FAILED
@@ -203,9 +214,14 @@ async def test_reject_marks_rejected_and_locks_message(tmp_path: Path) -> None:
     orch, store, bridge, _, proposal = _make_setup(tmp_path)
     await orch.publish(proposal.id)
 
-    await orch.on_approval(ApprovalEvent(
-        proposal_id=proposal.id, decision=Decision.REJECTED, by="i", at="t",
-    ))
+    await orch.on_approval(
+        ApprovalEvent(
+            proposal_id=proposal.id,
+            decision=Decision.REJECTED,
+            by="i",
+            at="t",
+        )
+    )
 
     after = store.load(proposal.id)
     assert after.state == ProposalState.REJECTED
@@ -232,11 +248,14 @@ async def test_diff_tap_does_not_change_state(tmp_path: Path) -> None:
     orch, store, bridge, _, proposal = _make_setup(tmp_path)
     await orch.publish(proposal.id)
 
-    await orch.on_approval(ApprovalEvent(
-        proposal_id=proposal.id,
-        decision=Decision.PENDING,  # 'diff' tap
-        by="i", at="t",
-    ))
+    await orch.on_approval(
+        ApprovalEvent(
+            proposal_id=proposal.id,
+            decision=Decision.PENDING,  # 'diff' tap
+            by="i",
+            at="t",
+        )
+    )
 
     after = store.load(proposal.id)
     assert after.state == ProposalState.PENDING  # unchanged
@@ -248,11 +267,14 @@ async def test_diff_tap_does_not_change_state(tmp_path: Path) -> None:
 async def test_unknown_proposal_id_is_ignored(tmp_path: Path) -> None:
     orch, store, bridge, _, _ = _make_setup(tmp_path)
 
-    await orch.on_approval(ApprovalEvent(
-        proposal_id="does-not-exist",
-        decision=Decision.APPROVED,
-        by="i", at="t",
-    ))
+    await orch.on_approval(
+        ApprovalEvent(
+            proposal_id="does-not-exist",
+            decision=Decision.APPROVED,
+            by="i",
+            at="t",
+        )
+    )
     # No exceptions, no side effects.
     assert bridge.notifies == []
     assert bridge.edits == []
@@ -267,9 +289,14 @@ async def test_approve_with_verifier_opens_pr(tmp_path: Path) -> None:
     orch, store, bridge, _, proposal = _make_setup(tmp_path, verifier=verifier)
     await orch.publish(proposal.id)
 
-    await orch.on_approval(ApprovalEvent(
-        proposal_id=proposal.id, decision=Decision.APPROVED, by="i", at="t",
-    ))
+    await orch.on_approval(
+        ApprovalEvent(
+            proposal_id=proposal.id,
+            decision=Decision.APPROVED,
+            by="i",
+            at="t",
+        )
+    )
 
     after = store.load(proposal.id)
     assert after.state == ProposalState.PR_OPENED
@@ -284,9 +311,14 @@ async def test_approve_with_verifier_failure_keeps_ready_state(tmp_path: Path) -
     orch, store, bridge, _, proposal = _make_setup(tmp_path, verifier=verifier)
     await orch.publish(proposal.id)
 
-    await orch.on_approval(ApprovalEvent(
-        proposal_id=proposal.id, decision=Decision.APPROVED, by="i", at="t",
-    ))
+    await orch.on_approval(
+        ApprovalEvent(
+            proposal_id=proposal.id,
+            decision=Decision.APPROVED,
+            by="i",
+            at="t",
+        )
+    )
 
     after = store.load(proposal.id)
     # Stays at READY_FOR_PR (executor done) but no PR URL.
@@ -305,9 +337,14 @@ async def test_executor_failure_skips_verifier(tmp_path: Path) -> None:
     )
     await orch.publish(proposal.id)
 
-    await orch.on_approval(ApprovalEvent(
-        proposal_id=proposal.id, decision=Decision.APPROVED, by="i", at="t",
-    ))
+    await orch.on_approval(
+        ApprovalEvent(
+            proposal_id=proposal.id,
+            decision=Decision.APPROVED,
+            by="i",
+            at="t",
+        )
+    )
 
     after = store.load(proposal.id)
     assert after.state == ProposalState.EXECUTION_FAILED

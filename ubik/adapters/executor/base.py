@@ -8,6 +8,7 @@ worktree, makes edits, runs tests, and reports back an ExecutionResult.
 The orchestrator then asks the verifier to open a PR, never letting
 the executor near `main`.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -18,6 +19,7 @@ from typing import Protocol
 
 class ExecutorOutcome(str, Enum):
     """Final state of an executor run."""
+
     SUCCESS = "success"
     """Edits applied, tests pass, branch ready to PR."""
 

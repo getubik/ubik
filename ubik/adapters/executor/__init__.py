@@ -1,11 +1,12 @@
 """Executor adapters — how Ubik turns proposals into code changes."""
+
 from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING
 
 from .aider import AiderConfig, AiderExecutor
-from .base import Executor, ExecutionResult, ExecutorOutcome, ExecutorTask
+from .base import ExecutionResult, Executor, ExecutorOutcome, ExecutorTask
 from .claude_agent import ClaudeAgentConfig, ClaudeAgentExecutor
 
 if TYPE_CHECKING:
@@ -14,19 +15,19 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "Executor",
-    "ExecutionResult",
-    "ExecutorOutcome",
-    "ExecutorTask",
     "AiderConfig",
     "AiderExecutor",
     "ClaudeAgentConfig",
     "ClaudeAgentExecutor",
+    "ExecutionResult",
+    "Executor",
+    "ExecutorOutcome",
+    "ExecutorTask",
     "executor_from_config",
 ]
 
 
-def executor_from_config(cfg: "UbikConfig") -> Executor:
+def executor_from_config(cfg: UbikConfig) -> Executor:
     """Resolve an Executor from ``UbikConfig.executor.type``.
 
     Both adapters create their own git worktrees under

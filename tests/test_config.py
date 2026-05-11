@@ -1,4 +1,5 @@
 """Config loader contract: every field in ubik.example.yaml must round-trip."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -6,9 +7,9 @@ from pathlib import Path
 import pytest
 
 from ubik.core.config import (
-    ConfigError,
     SUPPORTED_BRIDGE_TYPES,
     SUPPORTED_EXECUTOR_TYPES,
+    ConfigError,
     UbikConfig,
     load,
 )
@@ -35,7 +36,9 @@ def _write(p: Path, body: str) -> Path:
 
 
 def test_load_full_config(tmp_path: Path) -> None:
-    yml = _write(tmp_path / "ubik.yaml", """
+    yml = _write(
+        tmp_path / "ubik.yaml",
+        """
 project:
   name: "demo"
   repo_path: "."
@@ -92,7 +95,8 @@ cost:
   alert_at_percent: 70
   track_only: true
   max_proposals_per_day: 7
-""")
+""",
+    )
     cfg = load(yml)
     assert cfg.project.default_branch == "trunk"
     assert cfg.llm.model == "gpt-4o"
@@ -114,10 +118,13 @@ cost:
 
 
 def test_unknown_executor_type_raises(tmp_path: Path) -> None:
-    yml = _write(tmp_path / "ubik.yaml", """
+    yml = _write(
+        tmp_path / "ubik.yaml",
+        """
 executor:
   type: "openhands"
-""")
+""",
+    )
     with pytest.raises(ConfigError) as exc_info:
         load(yml)
     assert "executor.type" in str(exc_info.value)
@@ -125,10 +132,13 @@ executor:
 
 
 def test_unknown_bridge_type_raises(tmp_path: Path) -> None:
-    yml = _write(tmp_path / "ubik.yaml", """
+    yml = _write(
+        tmp_path / "ubik.yaml",
+        """
 bridge:
   type: "slack"
-""")
+""",
+    )
     with pytest.raises(ConfigError) as exc_info:
         load(yml)
     assert "bridge.type" in str(exc_info.value)
@@ -137,16 +147,19 @@ bridge:
 def test_supported_sets_match_implementation() -> None:
     """Sanity: don't accidentally let a roadmap value into the supported set.
     Update this list deliberately when an adapter actually ships."""
-    assert SUPPORTED_EXECUTOR_TYPES == {"aider", "claude_agent_sdk"}
-    assert SUPPORTED_BRIDGE_TYPES == {"telegram"}
+    assert {"aider", "claude_agent_sdk"} == SUPPORTED_EXECUTOR_TYPES
+    assert {"telegram"} == SUPPORTED_BRIDGE_TYPES
 
 
 def test_partial_block_keeps_defaults_for_missing_keys(tmp_path: Path) -> None:
     """Loader must not require every key in a block to be present."""
-    yml = _write(tmp_path / "ubik.yaml", """
+    yml = _write(
+        tmp_path / "ubik.yaml",
+        """
 cost:
   daily_usd_cap: 1.0
-""")
+""",
+    )
     cfg = load(yml)
     assert cfg.cost.daily_usd_cap == 1.0
     assert cfg.cost.max_proposals_per_day == 20  # default preserved

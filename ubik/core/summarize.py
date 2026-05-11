@@ -11,6 +11,7 @@ Two extractors live here:
                              block out as a FindingExtract for the
                              daemon to turn into Proposals
 """
+
 from __future__ import annotations
 
 import re
@@ -179,7 +180,7 @@ def render_telegram_body(digest: AuditDigest, *, body_url: str | None = None) ->
         # Trim TL;DR to ~12 lines max so the message fits a phone screen.
         tldr_lines = digest.tldr.splitlines()
         if len(tldr_lines) > 12:
-            tldr_lines = tldr_lines[:12] + ["…"]
+            tldr_lines = [*tldr_lines[:12], "…"]
         lines.append("\n".join(tldr_lines))
 
     # Finding count + severity summary

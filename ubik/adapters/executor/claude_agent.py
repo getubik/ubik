@@ -24,6 +24,7 @@ Failure modes handled here:
     empty-diff guard so the verifier never pushes a 0-commit branch)
   • Session exceeds time_cap_seconds → outcome=TIMED_OUT
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -44,7 +45,7 @@ from ubik.tools.git import (
     head_sha,
 )
 
-from .base import Executor, ExecutionResult, ExecutorOutcome, ExecutorTask
+from .base import ExecutionResult, Executor, ExecutorOutcome, ExecutorTask
 
 logger = logging.getLogger(__name__)
 
@@ -120,13 +121,13 @@ class ClaudeAgentExecutor(Executor):
                 outcome=ExecutorOutcome.FAILED,
                 proposal_id=task.proposal_id,
                 notes=(
-                    "claude-agent-sdk not installed. "
-                    "Install with: pip install psssst[claude-agent]"
+                    "claude-agent-sdk not installed. Install with: pip install psssst[claude-agent]"
                 ),
                 duration_seconds=time.monotonic() - started,
             )
 
-        if not os.environ.get(self.config.api_key_env):
+        api_key = os.environ.get(self.config.api_key_env)
+        if not api_key:
             return ExecutionResult(
                 outcome=ExecutorOutcome.FAILED,
                 proposal_id=task.proposal_id,
@@ -134,7 +135,7 @@ class ClaudeAgentExecutor(Executor):
                     f"Missing env var {self.config.api_key_env}. "
                     "The Claude Agent SDK speaks the Anthropic API directly — "
                     "Z.AI / GLM is not supported here. Use "
-                    "executor.type: \"aider\" for OpenAI-compatible providers."
+                    'executor.type: "aider" for OpenAI-compatible providers.'
                 ),
                 duration_seconds=time.monotonic() - started,
             )
@@ -218,8 +219,7 @@ class ClaudeAgentExecutor(Executor):
         if outcome == ExecutorOutcome.SUCCESS and ahead == 0:
             outcome = ExecutorOutcome.FAILED
             exec_notes = (
-                (exec_notes or "")
-                + "\n\nNo new commits on the worktree branch — the SDK "
+                (exec_notes or "") + "\n\nNo new commits on the worktree branch — the SDK "
                 "session exited cleanly but produced no committable "
                 "changes. Likely the model described the plan without "
                 "running its Edit/Write tools."

@@ -1,4 +1,5 @@
 """Tests for the git worktree helpers used by every executor."""
+
 from __future__ import annotations
 
 import subprocess
@@ -13,7 +14,6 @@ from ubik.tools.git import (
     diff_shortstat,
     files_changed,
     has_uncommitted_changes,
-    head_sha,
     remove_worktree,
 )
 
@@ -37,11 +37,15 @@ def _init_repo(path: Path) -> None:
     # Pretend we have an `origin` so `fetch origin main` doesn't hard-fail.
     subprocess.run(
         ["git", "remote", "add", "origin", str(path)],
-        cwd=path, check=True, capture_output=True,
+        cwd=path,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "fetch", "origin", "main", "--quiet"],
-        cwd=path, check=False, capture_output=True,
+        cwd=path,
+        check=False,
+        capture_output=True,
     )
 
 
@@ -68,9 +72,7 @@ def test_create_worktree_replaces_stale(tmp_path: Path) -> None:
 
     create_worktree(repo, branch="auto/x", base_branch="main", worktree_root=root)
     # Second create with same branch must clean the first.
-    wt2 = create_worktree(
-        repo, branch="auto/x", base_branch="main", worktree_root=root
-    )
+    wt2 = create_worktree(repo, branch="auto/x", base_branch="main", worktree_root=root)
     assert wt2.path.exists()
 
 
@@ -78,7 +80,9 @@ def test_diff_and_commit_flow(tmp_path: Path) -> None:
     repo = tmp_path / "host"
     _init_repo(repo)
     wt = create_worktree(
-        repo, branch="auto/diff-test", base_branch="main",
+        repo,
+        branch="auto/diff-test",
+        base_branch="main",
         worktree_root=tmp_path / "trees",
     )
 
@@ -103,7 +107,9 @@ def test_remove_worktree_idempotent(tmp_path: Path) -> None:
     repo = tmp_path / "host"
     _init_repo(repo)
     wt = create_worktree(
-        repo, branch="auto/rm", base_branch="main",
+        repo,
+        branch="auto/rm",
+        base_branch="main",
         worktree_root=tmp_path / "trees",
     )
     path = wt.path
@@ -121,6 +127,8 @@ def test_create_worktree_rejects_non_repo(tmp_path: Path) -> None:
     not_a_repo.mkdir()
     with pytest.raises(GitError):
         create_worktree(
-            not_a_repo, branch="auto/x", base_branch="main",
+            not_a_repo,
+            branch="auto/x",
+            base_branch="main",
             worktree_root=tmp_path / "trees",
         )

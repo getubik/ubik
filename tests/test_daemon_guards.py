@@ -6,24 +6,17 @@ out — telegram_from_env, run_audit, and the LLM adapter are all
 replaced with fakes. The point is the branching logic in
 _daily_audit_cycle, not the underlying adapters.
 """
+
 from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 import pytest
 
 from ubik.adapters.bridge import NotifyMessage, ProposalMessage
-from ubik.adapters.executor import (
-    ExecutionResult,
-    ExecutorOutcome,
-    ExecutorTask,
-)
-from ubik.adapters.verifier import VerifyResult, VerifyTask, VerifyOutcome
 from ubik.core.config import UbikConfig
-
 
 # ── Fakes ────────────────────────────────────────────────────────────────
 
@@ -178,14 +171,11 @@ def test_cap_reached_drops_overflow_proposals(patched_daemon, monkeypatch):
 
     # Exactly one proposal (3 cap - 2 already used) should have hit publish.
     assert len(publish_calls) == 1, (
-        f"expected 1 publish call (cap 3, used 2, 5 candidates), "
-        f"got {len(publish_calls)}"
+        f"expected 1 publish call (cap 3, used 2, 5 candidates), got {len(publish_calls)}"
     )
 
     # The cap-warning notification must have been sent.
-    cap_msgs = [
-        n for n in fake_bridge.notifies if "cap" in (n.title or "").lower()
-    ]
+    cap_msgs = [n for n in fake_bridge.notifies if "cap" in (n.title or "").lower()]
     assert cap_msgs, "no cap-reached warning was sent to the bridge"
 
 
@@ -204,7 +194,5 @@ def test_dry_run_skips_cap_warning_notification(patched_daemon, monkeypatch):
 
     asyncio.run(daemon.run_audit_cycle())
 
-    cap_msgs = [
-        n for n in fake_bridge.notifies if "cap" in (n.title or "").lower()
-    ]
+    cap_msgs = [n for n in fake_bridge.notifies if "cap" in (n.title or "").lower()]
     assert cap_msgs == [], "dry-run must not push cap warnings to bridge"

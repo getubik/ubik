@@ -4,6 +4,7 @@ We don't actually invoke `aider` here (would need network + an LLM key);
 those are covered by smoke tests on Forge. These tests verify the
 adapter's failure-mode handling and ExecutorTask/Result wiring.
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -33,20 +34,28 @@ def _init_repo(path: Path) -> None:
     subprocess.run(["git", "add", "."], cwd=path, check=True, capture_output=True)
     subprocess.run(
         ["git", "commit", "-q", "-m", "initial"],
-        cwd=path, check=True, capture_output=True,
+        cwd=path,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "remote", "add", "origin", str(path)],
-        cwd=path, check=True, capture_output=True,
+        cwd=path,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "fetch", "origin", "main", "--quiet"],
-        cwd=path, check=False, capture_output=True,
+        cwd=path,
+        check=False,
+        capture_output=True,
     )
 
 
 @pytest.mark.asyncio
-async def test_aider_missing_returns_failed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_aider_missing_returns_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """If aider is not on PATH, the adapter returns FAILED with a friendly note."""
     repo = tmp_path / "host"
     _init_repo(repo)
@@ -72,7 +81,9 @@ async def test_aider_missing_returns_failed(tmp_path: Path, monkeypatch: pytest.
 
 
 @pytest.mark.asyncio
-async def test_missing_api_key_env_returns_failed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_missing_api_key_env_returns_failed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     """No API key in env → FAILED with the env var name in the note."""
     repo = tmp_path / "host"
     _init_repo(repo)

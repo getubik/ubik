@@ -1,4 +1,5 @@
 """Tests for the MCP tool handlers (notebook side — no LLM mocking yet)."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -67,7 +68,7 @@ def test_read_returns_body(tmp_path: Path) -> None:
 
     out = tool_notebook_read(nb, slug=slug)
     assert out["status"] == "ok"
-    assert "kind:" in out["markdown"]   # YAML frontmatter present
+    assert "kind:" in out["markdown"]  # YAML frontmatter present
 
 
 def test_read_unknown_slug_returns_error(tmp_path: Path) -> None:

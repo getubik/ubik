@@ -9,6 +9,7 @@ Args:
   --notebook PATH     notebook root (e.g. /opt/ubik/research/self)
   --min-severity STR  floor for proposals (low/medium/high/critical)
 """
+
 from __future__ import annotations
 
 import argparse
@@ -24,8 +25,9 @@ async def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--repo", required=True, type=Path)
     ap.add_argument("--notebook", required=True, type=Path)
-    ap.add_argument("--min-severity", default="medium",
-                    choices=["low", "medium", "high", "critical"])
+    ap.add_argument(
+        "--min-severity", default="medium", choices=["low", "medium", "high", "critical"]
+    )
     args = ap.parse_args()
 
     logging.basicConfig(

@@ -10,11 +10,11 @@ Three commands, one binary:
 The MCP server can also be invoked directly via:
     python -m ubik.mcp.server
 """
+
 from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich.console import Console
@@ -36,7 +36,7 @@ def run(
         "-c",
         help="Path to ubik.yaml (default: ./ubik.yaml)",
     ),
-    repo: Optional[Path] = typer.Option(
+    repo: Path | None = typer.Option(
         None,
         "--repo",
         help="Override the repo path the daemon watches (default: from config).",
@@ -51,12 +51,12 @@ def run(
         "--pulse-minutes",
         help="If > 0, fire a quick pulse cycle every N minutes (Sprint 5).",
     ),
-    notebook_path: Optional[Path] = typer.Option(
+    notebook_path: Path | None = typer.Option(
         None,
         "--notebook",
         help="Override notebook root (default: <repo>/research).",
     ),
-    poll_offset_file: Optional[Path] = typer.Option(
+    poll_offset_file: Path | None = typer.Option(
         None,
         "--poll-offset-file",
         help=(
@@ -97,9 +97,7 @@ def run(
 
     cfg = load_config(config if config.exists() else None, repo_path=repo)
     if not cfg.project.repo_path:
-        console.print(
-            "[red]No repo path. Pass --repo or set project.repo_path in ubik.yaml.[/red]"
-        )
+        console.print("[red]No repo path. Pass --repo or set project.repo_path in ubik.yaml.[/red]")
         raise typer.Exit(1)
 
     nb_root = notebook_path or (Path(cfg.project.repo_path) / cfg.notebook.path).resolve()
@@ -155,7 +153,7 @@ def mcp(
     ),
     host: str = typer.Option("127.0.0.1", "--host"),
     port: int = typer.Option(3000, "--port"),
-    config: Optional[Path] = typer.Option(
+    config: Path | None = typer.Option(
         None,
         "--config",
         help="Optional ubik.yaml — without it, MCP runs read-only",
@@ -191,7 +189,6 @@ def mcp(
     )
 
     # stderr banner — stdout MUST stay clean for the JSON-RPC protocol.
-    import sys
     print("🤫 Ubik · MCP server (stdio) ready", file=sys.stderr)
 
     try:
@@ -209,28 +206,26 @@ def audit(
         Path("."),
         help="Path to the repository (default: current directory)",
     ),
-    output: Optional[Path] = typer.Option(
+    output: Path | None = typer.Option(
         None,
         "--output",
         "-o",
         help="Write report to this path in addition to the notebook",
     ),
-    config: Optional[Path] = typer.Option(
+    config: Path | None = typer.Option(
         None,
         "--config",
         "-c",
         help="Path to ubik.yaml (default: ./ubik.yaml in repo, or env-only)",
     ),
-    project_name: Optional[str] = typer.Option(
+    project_name: str | None = typer.Option(
         None, "--project", help="Override project name in the report"
     ),
-    notebook_path: Optional[Path] = typer.Option(
+    notebook_path: Path | None = typer.Option(
         None, "--notebook", help="Override notebook root (default: ./research in repo)"
     ),
-    max_tokens: int = typer.Option(
-        8000, "--max-tokens", help="Cap on the model's reply length"
-    ),
-    notify: Optional[str] = typer.Option(
+    max_tokens: int = typer.Option(8000, "--max-tokens", help="Cap on the model's reply length"),
+    notify: str | None = typer.Option(
         None,
         "--notify",
         help="After audit, push a digest to a bridge: 'telegram' (uses TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID env vars).",
@@ -321,21 +316,22 @@ def audit(
             title=digest.title,
             body_markdown=body,
             footer=f"ubik audit · {result.entry.project} · "
-                   f"in={result.input_tokens} out={result.output_tokens} "
-                   f"thinking={result.thinking_tokens}",
+            f"in={result.input_tokens} out={result.output_tokens} "
+            f"thinking={result.thinking_tokens}",
             severity=sev,
             tags=["audit"],
         )
 
         if notify == "telegram":
             from ubik.adapters.bridge.telegram import telegram_from_env
+
             try:
                 bridge = telegram_from_env()
             except RuntimeError as e:
                 console.print(f"[red]notify=telegram failed: {e}[/red]")
                 raise typer.Exit(3) from e
             asyncio.run(bridge.notify(msg))
-            console.print(f"[green]→ Telegram notified[/green] (chat id from env)")
+            console.print("[green]→ Telegram notified[/green] (chat id from env)")
         else:
             console.print(f"[red]unknown --notify target: {notify}[/red]")
             raise typer.Exit(4)
@@ -376,9 +372,7 @@ def init(
     env_target = repo / ".env.example"
 
     if target.exists() and not force:
-        console.print(
-            f"[yellow]{target} already exists — pass --force to overwrite[/yellow]"
-        )
+        console.print(f"[yellow]{target} already exists — pass --force to overwrite[/yellow]")
         raise typer.Exit(1)
 
     answers = interactive_wizard(default_repo=repo, console=console)
@@ -387,9 +381,7 @@ def init(
 
     if write_env:
         if env_target.exists() and not force:
-            console.print(
-                f"[yellow]Skipping[/yellow] {env_target} (exists; --force to overwrite)"
-            )
+            console.print(f"[yellow]Skipping[/yellow] {env_target} (exists; --force to overwrite)")
         else:
             env_target.write_text(render_env_example(answers), encoding="utf-8")
             console.print(f"[green]✅ Wrote[/green] [bold]{env_target}[/bold]")

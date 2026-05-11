@@ -20,6 +20,7 @@ Filesystem layout::
     └── proposals/
         └── 2026-05-09-trendhunter-halucination.md
 """
+
 from __future__ import annotations
 
 import json

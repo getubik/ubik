@@ -18,6 +18,7 @@ State machine is intentionally rigid; bad transitions raise. The
 orchestrator owns no LLM calls — everything LLM-side lives in
 researcher / executor.
 """
+
 from __future__ import annotations
 
 import logging
@@ -31,7 +32,7 @@ from ubik.adapters.bridge import (
     ProposalMessage,
     Severity,
 )
-from ubik.adapters.executor import Executor, ExecutionResult, ExecutorOutcome, ExecutorTask
+from ubik.adapters.executor import ExecutionResult, Executor, ExecutorOutcome, ExecutorTask
 from ubik.adapters.verifier import Verifier, VerifyOutcome, VerifyTask
 from ubik.core.notebook import Notebook
 from ubik.core.proposal import Proposal, ProposalState, ProposalStore
@@ -146,7 +147,8 @@ class Orchestrator:
         if proposal.state not in (ProposalState.PENDING, ProposalState.REFINING):
             logger.info(
                 "Approval for proposal %s ignored (state=%s)",
-                proposal.id[:8], proposal.state.value,
+                proposal.id[:8],
+                proposal.state.value,
             )
             return
 
@@ -160,14 +162,12 @@ class Orchestrator:
             proposal.state = ProposalState.REFINING
             proposal.notes = (proposal.notes + "\n\n" + event.note).strip()
             self.store.save(proposal)
-            logger.info("Proposal %s marked REFINING (refine flow not wired yet)",
-                        proposal.id[:8])
+            logger.info("Proposal %s marked REFINING (refine flow not wired yet)", proposal.id[:8])
         elif event.decision == Decision.PENDING:
             # 'diff' tap — show more, don't change state.
             await self._handle_diff_request(proposal, event)
         else:
-            logger.warning("Unknown decision %s on proposal %s",
-                           event.decision, proposal.id[:8])
+            logger.warning("Unknown decision %s on proposal %s", event.decision, proposal.id[:8])
 
     # ── execute: approved proposal → branch ──────────────────────────────
 
@@ -176,8 +176,7 @@ class Orchestrator:
         proposal = self.store.load(proposal_id)
         if proposal.state != ProposalState.APPROVED:
             raise RuntimeError(
-                f"refusing to execute from state {proposal.state.value} "
-                "(must be APPROVED first)"
+                f"refusing to execute from state {proposal.state.value} (must be APPROVED first)"
             )
 
         proposal.state = ProposalState.EXECUTION_RUNNING
@@ -218,8 +217,7 @@ class Orchestrator:
             if not result.files_changed:
                 proposal.state = ProposalState.EXECUTION_FAILED
                 proposal.notes = (
-                    (proposal.notes or "")
-                    + "\n\nDetected zero file changes after Aider session. "
+                    (proposal.notes or "") + "\n\nDetected zero file changes after Aider session. "
                     "Most likely the model described the change without "
                     "committing it. Re-run after tightening the prompt or "
                     "re-pinning Aider's --auto-commits behaviour."
@@ -285,8 +283,7 @@ class Orchestrator:
             proposal.state = ProposalState.PR_OPENED
             proposal.pr_url = verify_result.pr_url
             proposal.notes = (
-                proposal.notes
-                + f"\n\nPR opened: {verify_result.pr_url} ({verify_result.notes})"
+                proposal.notes + f"\n\nPR opened: {verify_result.pr_url} ({verify_result.notes})"
             ).strip()
         else:
             proposal.notes = (
@@ -318,9 +315,7 @@ class Orchestrator:
         if r.diff_summary:
             parts.append(f"_Diff_: `{r.diff_summary.strip()}`")
         if r.test_passed is not None:
-            parts.append(
-                f"_Tests_: {'✅ passed' if r.test_passed else '⚠️ skipped/failed'}"
-            )
+            parts.append(f"_Tests_: {'✅ passed' if r.test_passed else '⚠️ skipped/failed'}")
         return "\n".join(parts)
 
     async def _post_verify_summary(self, proposal: Proposal, result) -> None:
@@ -337,18 +332,17 @@ class Orchestrator:
             sev = Severity.MEDIUM
             title = f"Ubik · PR ready · {proposal.title}"
         else:
-            body = (
-                f"**{result.outcome.value}**\n\n"
-                + (result.notes[:1500] or "no verifier output")
-            )
+            body = f"**{result.outcome.value}**\n\n" + (result.notes[:1500] or "no verifier output")
             sev = Severity.HIGH
             title = f"Ubik · PR failed · {proposal.title}"
 
         await self.bridge.notify(
             NotifyMessage(
-                title=title, body_markdown=body,
+                title=title,
+                body_markdown=body,
                 footer=f"id: {proposal.id[:8]}",
-                severity=sev, tags=["verify", proposal.severity],
+                severity=sev,
+                tags=["verify", proposal.severity],
             )
         )
 
@@ -383,8 +377,7 @@ class Orchestrator:
         try:
             await self.execute(proposal.id)
         except Exception as e:
-            logger.error("Execute failed for proposal %s: %s",
-                         proposal.id[:8], e, exc_info=True)
+            logger.error("Execute failed for proposal %s: %s", proposal.id[:8], e, exc_info=True)
             proposal.state = ProposalState.EXECUTION_FAILED
             proposal.notes = (proposal.notes + f"\n\nExecutor crashed: {e}").strip()
             self.store.save(proposal)
@@ -400,7 +393,6 @@ class Orchestrator:
         # we just re-send it as a notify (no buttons) so the user sees
         # the full text expanded. Real diff viewing comes after the
         # executor runs, in Sprint 2.3b/p6.
-        from .summarize import render_telegram_body
         from ubik.adapters.bridge import NotifyMessage
 
         nm = NotifyMessage(
@@ -429,9 +421,7 @@ class Orchestrator:
             except Exception as e:
                 logger.warning("edit_message failed: %s", e)
 
-    async def _post_execution_summary(
-        self, proposal: Proposal, result: ExecutionResult
-    ) -> None:
+    async def _post_execution_summary(self, proposal: Proposal, result: ExecutionResult) -> None:
         """Tell the user how the executor went."""
         from ubik.adapters.bridge import NotifyMessage
 
@@ -447,9 +437,8 @@ class Orchestrator:
             sev = Severity.MEDIUM
         else:
             title = f"Ubik · execution failed · {proposal.title}"
-            body = (
-                f"**{result.outcome.value}** after {result.duration_seconds:.0f}s\n\n"
-                + (result.notes[:1500] or "no executor output")
+            body = f"**{result.outcome.value}** after {result.duration_seconds:.0f}s\n\n" + (
+                result.notes[:1500] or "no executor output"
             )
             sev = Severity.HIGH
 

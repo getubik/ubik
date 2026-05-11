@@ -1,8 +1,8 @@
 """Tests for the audit-markdown → FindingExtract parser."""
+
 from __future__ import annotations
 
 from ubik.core.summarize import extract_findings
-
 
 SAMPLE = """\
 # Ubik Audit · gyibb

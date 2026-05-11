@@ -15,6 +15,7 @@ directory sharing the same `.git` repository). That gives us:
 Used by `ubik/adapters/executor/*` so all executors get the same
 sandbox primitives.
 """
+
 from __future__ import annotations
 
 import logging
@@ -52,7 +53,12 @@ def _git(args: list[str], cwd: Path | None = None, check: bool = True) -> str:
     cmd = ["git", *args]
     logger.debug("git %s (cwd=%s)", " ".join(args), cwd)
     out = subprocess.run(
-        cmd, cwd=cwd, capture_output=True, text=True, check=False, timeout=30,
+        cmd,
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
     )
     if check and out.returncode != 0:
         raise GitError(

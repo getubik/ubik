@@ -9,6 +9,7 @@ Two layers:
   • LLMAdapter — minimal `chat(messages)` interface
   • Implementations live in sibling files (`litellm_adapter.py` etc.)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -18,6 +19,7 @@ from typing import Any, Literal, Protocol
 @dataclass(slots=True)
 class Message:
     """A single chat message."""
+
     role: Literal["system", "user", "assistant", "tool"]
     content: str
 
@@ -25,6 +27,7 @@ class Message:
 @dataclass(slots=True)
 class LLMResponse:
     """The result of a chat call."""
+
     text: str
     """The assistant's natural-language reply."""
 

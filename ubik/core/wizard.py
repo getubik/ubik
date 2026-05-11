@@ -6,6 +6,7 @@ Pure rendering lives in ``render_yaml`` / ``render_env_example`` so tests
 can assemble a ``WizardAnswers`` directly and verify the output without
 mocking prompts.
 """
+
 from __future__ import annotations
 
 import re
@@ -14,12 +15,12 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from rich.console import Console
-from rich.prompt import Confirm, IntPrompt, Prompt
-
+from rich.prompt import IntPrompt, Prompt
 
 # ── Provider presets ─────────────────────────────────────────────────────
 # Each preset maps to a researcher.llm block + which env var users must
 # set in their .env. The ``model`` is a sane default, freely overridable.
+
 
 @dataclass(frozen=True, slots=True)
 class ProviderPreset:
@@ -156,9 +157,7 @@ class WizardAnswers:
 def render_yaml(a: WizardAnswers) -> str:
     """Produce a fully-honest ubik.yaml — every field round-trips through the loader."""
     base_url_line = (
-        f'    base_url: "{a.preset.base_url}"\n'
-        if a.preset.base_url
-        else "    base_url: null\n"
+        f'    base_url: "{a.preset.base_url}"\n' if a.preset.base_url else "    base_url: null\n"
     )
     test_line = (
         f'  test_command: "{a.test_command}"\n' if a.test_command else "  test_command: null\n"
@@ -259,7 +258,11 @@ def autodetect_default_branch(repo: Path) -> str:
     try:
         out = subprocess.run(
             ["git", "symbolic-ref", "refs/remotes/origin/HEAD", "--short"],
-            cwd=str(repo), capture_output=True, text=True, timeout=3, check=False,
+            cwd=str(repo),
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
         )
         if out.returncode == 0:
             ref = out.stdout.strip()
@@ -278,7 +281,11 @@ def autodetect_github_slug(repo: Path) -> str:
     try:
         out = subprocess.run(
             ["git", "remote", "get-url", "origin"],
-            cwd=str(repo), capture_output=True, text=True, timeout=3, check=False,
+            cwd=str(repo),
+            capture_output=True,
+            text=True,
+            timeout=3,
+            check=False,
         )
     except (OSError, subprocess.SubprocessError):
         return ""
@@ -293,26 +300,19 @@ def interactive_wizard(*, default_repo: Path, console: Console) -> WizardAnswers
     console.print()
     console.print("[bold]🤫 Ubik · first-run wizard[/bold]")
     console.print(
-        "[dim]Six questions, all with sensible defaults. "
-        "You can edit ubik.yaml afterwards.[/dim]\n"
+        "[dim]Six questions, all with sensible defaults. You can edit ubik.yaml afterwards.[/dim]\n"
     )
 
     repo = default_repo.resolve()
     project_name = Prompt.ask("Project name", default=repo.name)
-    repo_path = Prompt.ask(
-        "Repo path Ubik should watch", default=str(repo)
-    )
-    default_branch = Prompt.ask(
-        "Default branch", default=autodetect_default_branch(repo)
-    )
+    repo_path = Prompt.ask("Repo path Ubik should watch", default=str(repo))
+    default_branch = Prompt.ask("Default branch", default=autodetect_default_branch(repo))
 
     # LLM provider
     console.print("\n[bold]LLM provider[/bold]")
     for i, p in enumerate(PRESETS, 1):
         console.print(f"  [cyan]{i}[/cyan]. {p.label}")
-    idx = IntPrompt.ask(
-        "Choose", default=1, choices=[str(i) for i in range(1, len(PRESETS) + 1)]
-    )
+    idx = IntPrompt.ask("Choose", default=1, choices=[str(i) for i in range(1, len(PRESETS) + 1)])
     preset = PRESETS[idx - 1]
 
     # Bridge
@@ -327,9 +327,7 @@ def interactive_wizard(*, default_repo: Path, console: Console) -> WizardAnswers
 
     # Verifier — GitHub
     console.print("\n[bold]GitHub verifier[/bold]")
-    github_repo = Prompt.ask(
-        "Repo slug (org/repo) for PRs", default=autodetect_github_slug(repo)
-    )
+    github_repo = Prompt.ask("Repo slug (org/repo) for PRs", default=autodetect_github_slug(repo))
     test_command = Prompt.ask(
         "Test command [dim](blank = skip tests during executor run)[/dim]",
         default="pytest -q",

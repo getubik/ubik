@@ -13,6 +13,7 @@ Currently supported blocks:
 Unsupported-but-roadmapped blocks are documented in docs/roadmap.md and
 deliberately absent from ubik.example.yaml.
 """
+
 from __future__ import annotations
 
 import os
@@ -63,9 +64,7 @@ class ExecutorSandboxConfig:
 
 @dataclass(slots=True)
 class ExecutorGuardrailsConfig:
-    cannot_push_to: list[str] = field(
-        default_factory=lambda: ["main", "master", "production"]
-    )
+    cannot_push_to: list[str] = field(default_factory=lambda: ["main", "master", "production"])
     require_tests: bool = True
     require_pr_review: bool = True
 
@@ -265,9 +264,7 @@ def load(path: Path | str | None = None, *, repo_path: Path | str | None = None)
             )
             cfg.verifier.pr.repo = pr.get("repo", cfg.verifier.pr.repo)
             cfg.verifier.pr.base_branch = pr.get("base_branch", cfg.verifier.pr.base_branch)
-            cfg.verifier.pr.auto_create = bool(
-                pr.get("auto_create", cfg.verifier.pr.auto_create)
-            )
+            cfg.verifier.pr.auto_create = bool(pr.get("auto_create", cfg.verifier.pr.auto_create))
 
     # Notebook --------------------------------------------------------------
     if nb := raw.get("notebook"):

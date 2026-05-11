@@ -1,4 +1,5 @@
 """Adapter factories: type field in config dispatches to the right class."""
+
 from __future__ import annotations
 
 import pytest
@@ -15,7 +16,6 @@ from ubik.adapters.verifier import (
     verifier_from_config,
 )
 from ubik.core.config import UbikConfig
-
 
 # ── Executor factory ────────────────────────────────────────────────────
 
@@ -62,8 +62,8 @@ def test_executor_factory_claude_agent_without_base_url_swaps_non_anthropic_mode
     and log a warning (see fallback in executor_from_config)."""
     cfg = UbikConfig()
     cfg.executor.type = "claude_agent_sdk"
-    cfg.llm.base_url = None       # pure Anthropic
-    cfg.llm.model = "glm-5.1"     # but model is wrong for that
+    cfg.llm.base_url = None  # pure Anthropic
+    cfg.llm.model = "glm-5.1"  # but model is wrong for that
     ex = executor_from_config(cfg)
     assert isinstance(ex, ClaudeAgentExecutor)
     assert ex.config.model.startswith("claude-")

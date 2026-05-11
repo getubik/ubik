@@ -6,6 +6,7 @@ so we install a fake module into sys.modules before the executor runs.
 This validates: missing-SDK error path, missing-API-key error path,
 worktree creation, no-commits guard, success path.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -22,7 +23,6 @@ from ubik.adapters.executor import (
     ExecutorOutcome,
     ExecutorTask,
 )
-
 
 # ── Fake SDK plumbing ────────────────────────────────────────────────────
 
@@ -81,11 +81,15 @@ def _git_repo(tmp_path: Path) -> Path:
     subprocess.run(["git", "commit", "-qm", "init"], cwd=repo, check=True, capture_output=True)
     subprocess.run(
         ["git", "remote", "add", "origin", str(repo)],
-        cwd=repo, check=True, capture_output=True,
+        cwd=repo,
+        check=True,
+        capture_output=True,
     )
     subprocess.run(
         ["git", "fetch", "origin", "main", "--quiet"],
-        cwd=repo, check=False, capture_output=True,
+        cwd=repo,
+        check=False,
+        capture_output=True,
     )
     return repo
 

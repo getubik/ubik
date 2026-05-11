@@ -15,6 +15,7 @@ that even a large codebase fits in a single LLM context window:
 Output is a single flat dict that the Researcher renders into the
 prompt. Future sprints will add streaming / iterative tool-call mode.
 """
+
 from __future__ import annotations
 
 import logging
@@ -27,40 +28,119 @@ logger = logging.getLogger(__name__)
 
 # Files / dirs we never want to include in the snapshot — too large,
 # too noisy, or already known to the LLM (e.g. lockfiles).
-_SKIP_DIRS = frozenset({
-    ".git", ".github", ".venv", "venv", "env", "node_modules",
-    "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-    ".tox", "build", "dist", "target", "bin", "obj",
-    ".idea", ".vscode", ".next", ".nuxt", ".cache",
-    "coverage", "htmlcov", ".coverage",
-})
+_SKIP_DIRS = frozenset(
+    {
+        ".git",
+        ".github",
+        ".venv",
+        "venv",
+        "env",
+        "node_modules",
+        "__pycache__",
+        ".pytest_cache",
+        ".mypy_cache",
+        ".ruff_cache",
+        ".tox",
+        "build",
+        "dist",
+        "target",
+        "bin",
+        "obj",
+        ".idea",
+        ".vscode",
+        ".next",
+        ".nuxt",
+        ".cache",
+        "coverage",
+        "htmlcov",
+        ".coverage",
+    }
+)
 
-_SKIP_EXTS = frozenset({
-    ".pyc", ".pyo", ".so", ".dll", ".exe", ".bin", ".o", ".a",
-    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".ico", ".svg",
-    ".pdf", ".zip", ".tar", ".gz", ".bz2", ".xz", ".7z",
-    ".mp3", ".mp4", ".mov", ".avi", ".webm",
-    ".lock",  # uv.lock, package-lock.json, etc. — large, low signal
-    ".min.js", ".min.css",
-})
+_SKIP_EXTS = frozenset(
+    {
+        ".pyc",
+        ".pyo",
+        ".so",
+        ".dll",
+        ".exe",
+        ".bin",
+        ".o",
+        ".a",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".webp",
+        ".ico",
+        ".svg",
+        ".pdf",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".xz",
+        ".7z",
+        ".mp3",
+        ".mp4",
+        ".mov",
+        ".avi",
+        ".webm",
+        ".lock",  # uv.lock, package-lock.json, etc. — large, low signal
+        ".min.js",
+        ".min.css",
+    }
+)
 
 # Extensions Ubik treats as primary code (architecture-revealing).
-_CODE_EXTS = frozenset({
-    ".py", ".ts", ".tsx", ".js", ".jsx", ".go", ".rs", ".java",
-    ".kt", ".swift", ".rb", ".php", ".cs", ".cpp", ".c", ".h",
-    ".vue", ".svelte", ".astro",
-})
+_CODE_EXTS = frozenset(
+    {
+        ".py",
+        ".ts",
+        ".tsx",
+        ".js",
+        ".jsx",
+        ".go",
+        ".rs",
+        ".java",
+        ".kt",
+        ".swift",
+        ".rb",
+        ".php",
+        ".cs",
+        ".cpp",
+        ".c",
+        ".h",
+        ".vue",
+        ".svelte",
+        ".astro",
+    }
+)
 
 # Files that almost always reveal architecture intent. Order matters
 # (we try them top-down and stop at total budget).
 _HIGH_VALUE_BASENAMES = (
-    "README.md", "README.rst", "README.txt", "README",
-    "pyproject.toml", "package.json", "Cargo.toml", "go.mod",
-    "docker-compose.yml", "docker-compose.yaml", "Dockerfile",
-    "Makefile", "justfile", "requirements.txt",
-    "tsconfig.json", "tsconfig.base.json",
-    ".env.example", "env.example",
-    "ARCHITECTURE.md", "CONTRIBUTING.md", "ROADMAP.md",
+    "README.md",
+    "README.rst",
+    "README.txt",
+    "README",
+    "pyproject.toml",
+    "package.json",
+    "Cargo.toml",
+    "go.mod",
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    "Dockerfile",
+    "Makefile",
+    "justfile",
+    "requirements.txt",
+    "tsconfig.json",
+    "tsconfig.base.json",
+    ".env.example",
+    "env.example",
+    "ARCHITECTURE.md",
+    "CONTRIBUTING.md",
+    "ROADMAP.md",
 )
 
 
@@ -183,7 +263,10 @@ def _detect_default_branch(root: Path) -> str:
     try:
         out = subprocess.run(
             ["git", "-C", str(root), "symbolic-ref", "--short", "HEAD"],
-            capture_output=True, text=True, timeout=4, check=False,
+            capture_output=True,
+            text=True,
+            timeout=4,
+            check=False,
         )
         if out.returncode == 0:
             return out.stdout.strip() or "main"
@@ -198,13 +281,19 @@ def _git_log(root: Path, max_commits: int) -> list[GitCommit]:
     try:
         out = subprocess.run(
             [
-                "git", "-C", str(root),
-                "log", f"-{max_commits}",
+                "git",
+                "-C",
+                str(root),
+                "log",
+                f"-{max_commits}",
                 f"--pretty=format:{fmt}",
                 "--date=short",
                 "--shortstat",
             ],
-            capture_output=True, text=True, timeout=8, check=False,
+            capture_output=True,
+            text=True,
+            timeout=8,
+            check=False,
         )
     except (FileNotFoundError, subprocess.SubprocessError):
         return []
@@ -224,9 +313,26 @@ def _git_log(root: Path, max_commits: int) -> list[GitCommit]:
                 commits.append(pending)
             sha, subject, author, date = line.split("\x1f", 3)
             pending = GitCommit(sha=sha[:7], subject=subject, author=author, date=date)
-        elif pending and line.strip().startswith(("1 file", "2 file", "3 file", "4 file",
-                                                   "5 file", "6 file", "7 file", "8 file",
-                                                   "9 file")) or "file changed" in line or "files changed" in line:
+        elif (
+            (
+                pending
+                and line.strip().startswith(
+                    (
+                        "1 file",
+                        "2 file",
+                        "3 file",
+                        "4 file",
+                        "5 file",
+                        "6 file",
+                        "7 file",
+                        "8 file",
+                        "9 file",
+                    )
+                )
+            )
+            or "file changed" in line
+            or "files changed" in line
+        ):
             pending.diff_stat = line.strip()
     if pending is not None:
         commits.append(pending)
@@ -272,10 +378,12 @@ def _gather_high_value_files(
             continue
         truncated = len(text) > max_file_chars
         body = text[:max_file_chars]
-        out.append(FileSnippet(
-            path=_rel(path, root),
-            content=body,
-            truncated=truncated,
-            line_count=text.count("\n") + 1,
-        ))
+        out.append(
+            FileSnippet(
+                path=_rel(path, root),
+                content=body,
+                truncated=truncated,
+                line_count=text.count("\n") + 1,
+            )
+        )
     return out

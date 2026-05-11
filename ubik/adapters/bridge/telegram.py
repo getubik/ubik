@@ -11,6 +11,7 @@ Why direct httpx instead of python-telegram-bot v21+:
   - Sprint 2.2 (approval flow) will add PTB as an opt-in extra and
     use this adapter as the publish-side of a richer Bridge.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -89,11 +90,13 @@ class TelegramBridge(Bridge):
         text = self._render(nm)
 
         keyboard = {
-            "inline_keyboard": [[
-                {"text": "✅ Apply",   "callback_data": f"ubik:approve:{message.proposal_id}"},
-                {"text": "👁 Diff",    "callback_data": f"ubik:diff:{message.proposal_id}"},
-                {"text": "❌ Reject",  "callback_data": f"ubik:reject:{message.proposal_id}"},
-            ]]
+            "inline_keyboard": [
+                [
+                    {"text": "✅ Apply", "callback_data": f"ubik:approve:{message.proposal_id}"},
+                    {"text": "👁 Diff", "callback_data": f"ubik:diff:{message.proposal_id}"},
+                    {"text": "❌ Reject", "callback_data": f"ubik:reject:{message.proposal_id}"},
+                ]
+            ]
         }
 
         # Send to the FIRST chat only — proposals are routed to the
@@ -116,7 +119,9 @@ class TelegramBridge(Bridge):
             if resp.status_code != 200:
                 logger.warning(
                     "Telegram propose send failed (chat=%s, status=%d): %s",
-                    primary, resp.status_code, resp.text[:300],
+                    primary,
+                    resp.status_code,
+                    resp.text[:300],
                 )
                 return refs
             data = resp.json()
@@ -125,8 +130,7 @@ class TelegramBridge(Bridge):
                 "chat_id": str(primary),
                 "message_id": str(result.get("message_id", "")),
             }
-            logger.info("Telegram proposal sent → chat=%s msg=%s",
-                        primary, refs.get("message_id"))
+            logger.info("Telegram proposal sent → chat=%s msg=%s", primary, refs.get("message_id"))
         return refs
 
     async def edit_message(
@@ -168,7 +172,9 @@ class TelegramBridge(Bridge):
                     if resp.status_code != 200:
                         logger.warning(
                             "Telegram send failed (chat=%s, status=%d): %s",
-                            chat_id, resp.status_code, resp.text[:200],
+                            chat_id,
+                            resp.status_code,
+                            resp.text[:200],
                         )
                     else:
                         logger.info("Telegram notify sent → chat=%s", chat_id)
@@ -181,20 +187,22 @@ class TelegramBridge(Bridge):
         self,
         *,
         on_event,
-        offset_state_path: Path | None = Path.home() / ".ubik" / "poll-offset",
+        offset_state_path: Path | None = None,
         timeout: int = 25,
     ) -> None:
         """Long-poll Telegram for callback_query events forever.
 
         ``on_event`` is awaited with each ApprovalEvent. ``offset_state_path``
         is a small file we use to remember the last update_id between
-        restarts (so we don't reprocess the same tap twice).
+        restarts (so we don't reprocess the same tap twice). Defaults to
+        ``~/.ubik/poll-offset`` when omitted.
 
         Run this from the orchestrator main loop. On any HTTP error we
         backoff then retry — keeps running across transient outages.
         """
-        if offset_state_path:
-            offset_state_path.parent.mkdir(parents=True, exist_ok=True)
+        if offset_state_path is None:
+            offset_state_path = Path.home() / ".ubik" / "poll-offset"
+        offset_state_path.parent.mkdir(parents=True, exist_ok=True)
 
         last_update_id: int = 0
         if offset_state_path and offset_state_path.exists():
@@ -220,8 +228,9 @@ class TelegramBridge(Bridge):
                     continue
 
                 if resp.status_code != 200:
-                    logger.warning("getUpdates status=%d body=%s",
-                                   resp.status_code, resp.text[:200])
+                    logger.warning(
+                        "getUpdates status=%d body=%s", resp.status_code, resp.text[:200]
+                    )
                     await asyncio.sleep(5)
                     continue
 
@@ -280,7 +289,7 @@ class TelegramBridge(Bridge):
         verb_to_decision = {
             "approve": Decision.APPROVED,
             "reject": Decision.REJECTED,
-            "diff": Decision.PENDING,    # 'diff' means 'show me more'; not a final decision
+            "diff": Decision.PENDING,  # 'diff' means 'show me more'; not a final decision
             "refine": Decision.REFINE,
         }
         decision = verb_to_decision.get(verb)
@@ -302,19 +311,13 @@ class TelegramBridge(Bridge):
         if self._is_html:
             head = f"{icon} <b>{_escape_html(message.title)}</b>"
             body = _markdown_lite_to_html(message.body_markdown)
-            footer = (
-                f"\n\n<i>{_escape_html(message.footer)}</i>"
-                if message.footer else ""
-            )
+            footer = f"\n\n<i>{_escape_html(message.footer)}</i>" if message.footer else ""
         elif self._is_md_v2:
             head = f"{icon} *{_escape_md_v2(message.title)}*"
             # Body trusts the LLM to be MarkdownV2-clean. Footer is small
             # enough to pre-escape safely.
             body = message.body_markdown
-            footer = (
-                f"\n\n_{_escape_md_v2(message.footer)}_"
-                if message.footer else ""
-            )
+            footer = f"\n\n_{_escape_md_v2(message.footer)}_" if message.footer else ""
         else:  # plain
             head = f"{icon} {message.title}"
             body = message.body_markdown
@@ -357,11 +360,7 @@ def _escape_md_v2(text: str) -> str:
 
 def _escape_html(text: str) -> str:
     """Escape the three Telegram-HTML reserved characters."""
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 _BOLD_RE = re.compile(r"\*\*(.+?)\*\*")
@@ -466,6 +465,4 @@ def telegram_from_config(cfg: dict[str, Any]) -> TelegramBridge:
         )
 
     parse_mode = cfg.get("parse_mode", "MarkdownV2")
-    return TelegramBridge(
-        TelegramConfig(bot_token=token, chat_ids=chat_ids, parse_mode=parse_mode)
-    )
+    return TelegramBridge(TelegramConfig(bot_token=token, chat_ids=chat_ids, parse_mode=parse_mode))

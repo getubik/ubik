@@ -6,6 +6,7 @@ endpoint and pass model="openai/glm-5.1" to litellm. The same adapter
 talks to Anthropic, OpenAI, Bedrock, Gemini, Groq, Cerebras, Ollama,
 vLLM, and any other provider with a litellm shim.
 """
+
 from __future__ import annotations
 
 import logging
@@ -101,7 +102,9 @@ class LiteLLMAdapter(LLMAdapter):
 
         logger.debug(
             "LLM call → model=%s thinking=%s msgs=%d",
-            self.config.model, thinking, len(messages),
+            self.config.model,
+            thinking,
+            len(messages),
         )
 
         response = await acompletion(**payload)

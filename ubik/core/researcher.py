@@ -13,13 +13,13 @@ Sprint 2 wires in tool-call iteration so the agent can ask for more
 files mid-loop. Sprint 3 wires in web search + competitor scan.
 For now: one prompt, one response, one notebook entry.
 """
+
 from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from ubik.adapters.llm import LLMAdapter, Message
 from ubik.core.notebook import Notebook, NotebookEntry

@@ -14,13 +14,13 @@ Wires every component together and runs two concurrent tasks:
 The daemon owns no business logic — just orchestration of components
 that already exist. `ubik run` calls `Daemon(...).run()`.
 """
+
 from __future__ import annotations
 
 import asyncio
 import logging
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from ubik.adapters.bridge import (
     ApprovalEvent,
@@ -28,7 +28,6 @@ from ubik.adapters.bridge import (
     NotifyMessage,
     Severity,
     bridge_from_config,
-    telegram_from_env,
 )
 from ubik.adapters.executor import Executor, executor_from_config
 from ubik.adapters.llm import LLMAdapter, llm_from_config
@@ -37,8 +36,8 @@ from ubik.core.config import UbikConfig
 from ubik.core.notebook import Notebook
 from ubik.core.orchestrator import Orchestrator, OrchestratorConfig
 from ubik.core.proposal import ProposalStore
-from ubik.core.proposal_counter import DailyProposalCounter
 from ubik.core.proposal_builder import findings_to_proposals
+from ubik.core.proposal_counter import DailyProposalCounter
 from ubik.core.researcher import run_audit
 from ubik.core.scheduler import Scheduler
 from ubik.core.summarize import extract_findings
@@ -217,7 +216,9 @@ class Daemon:
 
         logger.info(
             "Audit produced %d findings (%d above %s threshold)",
-            len(findings), len(proposals), self.daemon_cfg.min_proposal_severity,
+            len(findings),
+            len(proposals),
+            self.daemon_cfg.min_proposal_severity,
         )
 
         # Daily proposal cap — prevent a runaway audit from blasting the
@@ -230,7 +231,10 @@ class Daemon:
             logger.warning(
                 "Daily proposal cap reached: %d already published today, "
                 "cap=%d, dropping %d of %d new proposals",
-                used_today, cap, len(proposals) - budget, len(proposals),
+                used_today,
+                cap,
+                len(proposals) - budget,
+                len(proposals),
             )
             await self._post_cap_warning(used_today, cap, dropped=len(proposals) - budget)
             proposals = proposals[:budget]
@@ -264,7 +268,9 @@ class Daemon:
         except Exception as e:
             logger.error(
                 "Orchestrator.on_approval crashed for proposal %s: %s",
-                event.proposal_id[:8], e, exc_info=True,
+                event.proposal_id[:8],
+                e,
+                exc_info=True,
             )
 
     # ── lifecycle pings ─────────────────────────────────────────────────
@@ -272,28 +278,33 @@ class Daemon:
     async def _announce_start(self) -> None:
         """Tell the user the daemon woke up — short, decorative."""
         try:
-            await self.bridge.notify(NotifyMessage(
-                title=f"Ubik · daemon awake · {self.cfg.project.name or 'unknown'}",
-                body_markdown=(
-                    f"Daily audit at **{self.daemon_cfg.daily_at}** local time.\n"
-                    f"Pulse: **{self.daemon_cfg.pulse_minutes} min**" if self.daemon_cfg.pulse_minutes
-                    else f"Daily audit at **{self.daemon_cfg.daily_at}** local time."
-                ),
-                footer=f"watching {self.cfg.project.repo_path}",
-                severity=Severity.LOW,
-                tags=["daemon", "lifecycle"],
-            ))
+            await self.bridge.notify(
+                NotifyMessage(
+                    title=f"Ubik · daemon awake · {self.cfg.project.name or 'unknown'}",
+                    body_markdown=(
+                        f"Daily audit at **{self.daemon_cfg.daily_at}** local time.\n"
+                        f"Pulse: **{self.daemon_cfg.pulse_minutes} min**"
+                        if self.daemon_cfg.pulse_minutes
+                        else f"Daily audit at **{self.daemon_cfg.daily_at}** local time."
+                    ),
+                    footer=f"watching {self.cfg.project.repo_path}",
+                    severity=Severity.LOW,
+                    tags=["daemon", "lifecycle"],
+                )
+            )
         except Exception:
             pass  # bridge errors must not stop the daemon
 
     async def _announce_stop(self) -> None:
         try:
-            await self.bridge.notify(NotifyMessage(
-                title=f"Ubik · daemon stopped · {self.cfg.project.name or 'unknown'}",
-                body_markdown="Pssst. I'm going quiet for now.",
-                severity=Severity.LOW,
-                tags=["daemon", "lifecycle"],
-            ))
+            await self.bridge.notify(
+                NotifyMessage(
+                    title=f"Ubik · daemon stopped · {self.cfg.project.name or 'unknown'}",
+                    body_markdown="Pssst. I'm going quiet for now.",
+                    severity=Severity.LOW,
+                    tags=["daemon", "lifecycle"],
+                )
+            )
         except Exception:
             pass
 
@@ -302,26 +313,30 @@ class Daemon:
         if self.daemon_cfg.dry_run:
             return
         try:
-            await self.bridge.notify(NotifyMessage(
-                title=f"Ubik · daily proposal cap reached · {self.cfg.project.name or 'unknown'}",
-                body_markdown=(
-                    f"Already published **{used}** today (cap **{cap}**). "
-                    f"Dropped **{dropped}** new proposals from this cycle. "
-                    "Raise `cost.max_proposals_per_day` in `ubik.yaml` to lift."
-                ),
-                severity=Severity.MEDIUM,
-                tags=["daemon", "cost-cap"],
-            ))
+            await self.bridge.notify(
+                NotifyMessage(
+                    title=f"Ubik · daily proposal cap reached · {self.cfg.project.name or 'unknown'}",
+                    body_markdown=(
+                        f"Already published **{used}** today (cap **{cap}**). "
+                        f"Dropped **{dropped}** new proposals from this cycle. "
+                        "Raise `cost.max_proposals_per_day` in `ubik.yaml` to lift."
+                    ),
+                    severity=Severity.MEDIUM,
+                    tags=["daemon", "cost-cap"],
+                )
+            )
         except Exception:
             pass
 
     async def _post_error(self, where: str, msg: str) -> None:
         try:
-            await self.bridge.notify(NotifyMessage(
-                title=f"Ubik · {where} crashed",
-                body_markdown=f"```\n{msg[:1500]}\n```",
-                severity=Severity.HIGH,
-                tags=["daemon", "error"],
-            ))
+            await self.bridge.notify(
+                NotifyMessage(
+                    title=f"Ubik · {where} crashed",
+                    body_markdown=f"```\n{msg[:1500]}\n```",
+                    severity=Severity.HIGH,
+                    tags=["daemon", "error"],
+                )
+            )
         except Exception:
             pass

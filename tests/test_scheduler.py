@@ -1,9 +1,9 @@
 """Tests for the in-process Scheduler."""
+
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timedelta
-from unittest.mock import patch
+from datetime import datetime
 
 import pytest
 
