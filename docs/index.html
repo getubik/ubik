@@ -139,6 +139,7 @@
     line-height: 1.08;
     white-space: pre;
     text-align: left;
+    overflow: visible;             /* kill the global `pre { overflow-x: auto }` */
   }
   .spray .can-art::before { content: none; }   /* kill the ❯ prompt from <pre> */
   .spray .trigger  { color: #ff2eb6; text-shadow: 0 0 8px rgba(255,46,182,0.65); }
