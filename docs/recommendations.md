@@ -59,7 +59,7 @@ Claude Code will route every request to GLM-5.1 instead of Anthropic's models.
 
 ```bash
 # install
-pip install ubik   # or: uv tool install ubik
+pip install psssst   # or: uv tool install psssst
 
 # point Ubik's own internal LLM calls at the same Z.AI endpoint
 export Z_AI_API_KEY="<same key>"
@@ -124,7 +124,7 @@ in Ubik works identically.
 Cheapest viable starting setup:
 
 1. Pay $30 for one Z.AI Coding Plan quarter (Pro tier).
-2. Install Ubik (`pip install ubik`).
+2. Install Ubik (`pip install psssst`).
 3. Set `Z_AI_API_KEY` in your env.
 4. Run `ubik audit ./your-repo`.
 

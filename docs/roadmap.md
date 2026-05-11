@@ -25,7 +25,7 @@
 - [ ] GYIBB-flavored config in `examples/gyibb-config.yaml`
 - [ ] Hetzner deployment (autonomous mode)
 - [ ] First real proposal-to-merge loop running on production
-- [ ] PyPI release (`pip install ubik`)
+- [x] PyPI release (`pip install psssst` — `ubik` was squatted by a Python 2.6-era package)
 - [ ] npm release (`@getubik/mcp` thin wrapper)
 - [ ] README polish, demo GIF, quickstart video
 

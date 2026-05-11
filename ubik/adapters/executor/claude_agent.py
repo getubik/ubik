@@ -112,7 +112,7 @@ class ClaudeAgentExecutor(Executor):
                 proposal_id=task.proposal_id,
                 notes=(
                     "claude-agent-sdk not installed. "
-                    "Install with: pip install ubik[claude-agent]"
+                    "Install with: pip install psssst[claude-agent]"
                 ),
                 duration_seconds=time.monotonic() - started,
             )

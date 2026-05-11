@@ -75,7 +75,7 @@ class LiteLLMAdapter(LLMAdapter):
             from litellm import acompletion
         except ImportError as e:
             raise RuntimeError(
-                "litellm is not installed. Run: pip install ubik (already a core dep)"
+                "litellm is not installed. Run: pip install psssst (already a core dep)"
             ) from e
 
         payload: dict[str, Any] = {

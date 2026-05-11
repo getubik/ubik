@@ -172,7 +172,7 @@ def _build_server(cfg: UbikConfig, notebook: Notebook):
         )
     except ImportError as e:
         raise RuntimeError(
-            "MCP server requires the 'mcp' extra: pip install ubik[mcp]"
+            "MCP server requires the 'mcp' extra: pip install psssst[mcp]"
         ) from e
 
     server: Server = Server("ubik")
@@ -367,7 +367,7 @@ async def run_stdio(config_path: Path | None = None, repo_path: Path | None = No
         from mcp.server.stdio import stdio_server
     except ImportError as e:
         raise RuntimeError(
-            "MCP server requires the 'mcp' extra: pip install ubik[mcp]"
+            "MCP server requires the 'mcp' extra: pip install psssst[mcp]"
         ) from e
 
     cfg = load_config(config_path, repo_path=repo_path)

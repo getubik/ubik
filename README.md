@@ -4,7 +4,7 @@
 >
 > An AI resident engineer for your codebase. Whispers findings. Proposes fixes. Waits for your tap.
 
-🤫 [psssst.dev](https://psssst.dev) · `pip install ubik`
+🤫 [psssst.dev](https://psssst.dev) · `pip install psssst`
 
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 [![Status: pre-alpha](https://img.shields.io/badge/status-pre--alpha-orange.svg)](#)
@@ -31,7 +31,7 @@ You stay in approval mode. Ubik does the digging.
 ## Quickstart
 
 ```bash
-pip install ubik
+pip install psssst      # the PyPI name; `ubik` was squatted in 2014
 
 # In any repo:
 cd my-repo

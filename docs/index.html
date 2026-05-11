@@ -231,9 +231,10 @@
   </ol>
 
   <h2>Quickstart</h2>
-  <pre><code>pip install ubik
-cp $(python -m ubik path)/examples/minimal-config.yaml ubik.yaml
-ubik run</code></pre>
+  <pre><code>pip install psssst
+ubik init
+ubik run --dry-run   # smoke test
+ubik run             # for real</code></pre>
 
   <p>
     Or run it as a Model Context Protocol server inside

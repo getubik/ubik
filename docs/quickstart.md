@@ -3,11 +3,14 @@
 ## Install
 
 ```bash
-pip install ubik              # core
-pip install ubik[mcp]         # + MCP server
-pip install ubik[telegram]    # + Telegram bridge
-pip install ubik[all]         # everything
+pip install psssst              # core (PyPI name; `ubik` was squatted in 2014)
+pip install psssst[mcp]         # + MCP server
+pip install psssst[telegram]    # + Telegram bridge
+pip install psssst[all]         # everything
 ```
+
+The CLI command is still `ubik` and `import ubik` still works — only the
+PyPI distribution name is `psssst`.
 
 ## Initialize a project
 

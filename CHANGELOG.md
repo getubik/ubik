@@ -2,6 +2,14 @@
 
 ## 0.1.0 — First public release
 
+> **PyPI distribution name is `psssst`** (not `ubik`). The `ubik` name
+> was squatted by an abandoned Python 2.6-era package; rather than wait
+> on a PEP 541 transfer we ship under `psssst` to align with the
+> [psssst.dev](https://psssst.dev) brand. The CLI command is still
+> `ubik` and `import ubik` still works — only the install line changes:
+> `pip install psssst`.
+
+
 The "honest config + first-run wizard + real factory" milestone. Closes
 the gap between the README's vendor-agnostic story and what the loader,
 daemon, and adapter registry actually honored.

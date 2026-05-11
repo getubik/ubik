@@ -127,7 +127,7 @@ $0 — OSS forever                custom — call us
 ✓ All adapters, all features    ✓ SSO + audit logs
 ✓ Self-host on your infra       ✓ Dedicated support
 
-`pip install ubik`              `Schedule a call`
+`pip install psssst`            `Schedule a call`
 ```
 
 No hosted tier yet. No member ranks. No artificial limits on the OSS path.
