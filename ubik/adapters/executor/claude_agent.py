@@ -54,11 +54,20 @@ class ClaudeAgentConfig:
     """Configuration for the Claude Agent SDK executor."""
 
     model: str = "claude-sonnet-4-6"
-    """Anthropic model id. Pass anything the SDK accepts."""
+    """Anthropic model id. Pass anything the SDK accepts — including
+    the GLM / Kimi names exposed by Anthropic-compatible proxies."""
 
     api_key_env: str = "ANTHROPIC_API_KEY"
     """SDK reads ANTHROPIC_API_KEY from os.environ; we only check it
     exists ahead of time to fail loud."""
+
+    base_url: str | None = None
+    """Optional Anthropic-API-compatible endpoint override (e.g. Z.AI's
+    ``/api/anthropic`` surface that powers Claude Code routing to GLM).
+    When set, the run() method temporarily exports ``ANTHROPIC_BASE_URL``
+    + ``ANTHROPIC_API_KEY`` so the SDK's underlying ``anthropic`` client
+    picks them up at construction time. Restored after each task to
+    avoid polluting the daemon's env."""
 
     allowed_tools: list[str] = field(
         default_factory=lambda: ["Read", "Write", "Edit", "Bash", "Glob", "Grep"]
@@ -147,7 +156,28 @@ class ClaudeAgentExecutor(Executor):
                 duration_seconds=time.monotonic() - started,
             )
 
-        outcome, exec_notes = await self._drive(query, ClaudeAgentOptions, wt, task)
+        # Custom-endpoint support — the SDK reads ANTHROPIC_BASE_URL +
+        # ANTHROPIC_API_KEY at construction time. When the user pointed
+        # us at an Anthropic-compatible proxy (Z.AI's /api/anthropic,
+        # OpenRouter, LiteLLM gateway, etc.), forward the credentials
+        # through env vars and restore them on the way out so other
+        # tasks in the same process don't inherit the override.
+        saved_env: dict[str, str | None] = {}
+        if self.config.base_url:
+            saved_env["ANTHROPIC_BASE_URL"] = os.environ.get("ANTHROPIC_BASE_URL")
+            os.environ["ANTHROPIC_BASE_URL"] = self.config.base_url
+        if self.config.api_key_env != "ANTHROPIC_API_KEY":
+            saved_env["ANTHROPIC_API_KEY"] = os.environ.get("ANTHROPIC_API_KEY")
+            os.environ["ANTHROPIC_API_KEY"] = api_key
+
+        try:
+            outcome, exec_notes = await self._drive(query, ClaudeAgentOptions, wt, task)
+        finally:
+            for key, prev in saved_env.items():
+                if prev is None:
+                    os.environ.pop(key, None)
+                else:
+                    os.environ[key] = prev
 
         # Auto-commit any straggling uncommitted edits — the SDK's tools
         # write files but don't make commits on their own.

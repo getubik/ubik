@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "psssst"
-version = "0.1.1"
+version = "0.1.2"
 description = "Psssst! An AI resident engineer for your codebase. (The PyPI name is `psssst` because `ubik` was squatted in the Python 2.6 era — `import ubik` and the `ubik` CLI still work after `pip install psssst`.)"
 readme = "README.md"
 requires-python = ">=3.10"

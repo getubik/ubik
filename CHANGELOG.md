@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.1.2 — Claude Agent SDK now follows `llm.base_url`
+
+The Claude Agent SDK wraps the official `anthropic` Python client,
+which respects `ANTHROPIC_BASE_URL` at construction time. This release
+threads `llm.base_url` through into that env var so the SDK can target
+**Anthropic-compatible proxies** the same way Claude Code does — e.g.
+Z.AI's `/api/anthropic` surface that routes through GLM, OpenRouter,
+or a LiteLLM gateway.
+
+### Behavior change in `executor_from_config` (claude_agent_sdk branch)
+- **With `llm.base_url` set**: pass the model name and base URL
+  through untouched. The proxy decides what the model id maps to.
+- **Without `llm.base_url`**: same as before — if the model isn't an
+  Anthropic id, fall back to `claude-sonnet-4-6` on `ANTHROPIC_API_KEY`
+  and log a warning explaining the swap.
+
+### How to use Claude Code's GLM trick from Ubik
+
+Edit `ubik.yaml`:
+
+```yaml
+researcher:
+  llm:
+    provider: "anthropic"
+    base_url: "https://api.z.ai/api/anthropic"   # Anthropic-compat
+    api_key_env: "Z_AI_API_KEY"
+    model: "claude-sonnet-4-5"   # whatever name the proxy expects
+executor:
+  type: "claude_agent_sdk"
+```
+
+Result: the SDK speaks Anthropic protocol, Z.AI translates to GLM under
+the hood, you stay on the Z.AI Coding Plan billing.
+
+### Test
+118 passed (was 117) — split the silent-swap test into two: one for the
+new pass-through-with-base_url path, one for the legacy swap-when-pure-
+Anthropic path.
+
 ## 0.1.1 — Expanded wizard provider presets
 
 ### Added

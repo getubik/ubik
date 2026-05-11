@@ -47,31 +47,44 @@ def executor_from_config(cfg: "UbikConfig") -> Executor:
         )
 
     if etype == "claude_agent_sdk":
-        # The Claude Agent SDK speaks Anthropic's Messages API directly —
-        # no OpenAI-compatible base_url knob. So this executor is locked
-        # to Anthropic-served models regardless of what the researcher
-        # LLM block points at. If the user's llm.model is non-Anthropic
-        # (e.g. they picked Z.AI / Kimi / MiniMax in `ubik init`), we
-        # FALL BACK to Claude Sonnet 4.6 and shout about it — silently
-        # billing two providers is the kind of surprise users hate.
+        # Claude Agent SDK wraps the official `anthropic` Python client,
+        # which respects ANTHROPIC_BASE_URL at construction time. So if
+        # the user has llm.base_url set to an Anthropic-compatible proxy
+        # (Z.AI's /api/anthropic surface for Claude Code routing,
+        # OpenRouter, LiteLLM gateway, etc.), we pass it through and
+        # trust their model name — the proxy decides what to do with it.
+        #
+        # ONLY fall back to claude-sonnet-4-6 when both conditions hit:
+        #   1. No base_url override (so we're talking to real Anthropic)
+        #   2. Model name isn't Anthropic-shaped
+        # In that case we shout, because silently billing two providers
+        # is the kind of surprise users hate.
+        base_url = cfg.llm.base_url
         model = cfg.llm.model
         api_key_env = cfg.llm.api_key_env or "ANTHROPIC_API_KEY"
-        if not model.startswith(("claude-", "anthropic.")):
+        anthropic_shaped = model.startswith(("claude-", "anthropic."))
+
+        if not base_url and not anthropic_shaped:
             logger.warning(
-                "executor.type=claude_agent_sdk but llm.model=%r is not an "
-                "Anthropic id. The SDK only speaks Anthropic's API, so the "
-                "executor will use 'claude-sonnet-4-6' on ANTHROPIC_API_KEY "
-                "regardless of your researcher LLM choice. "
-                "Switch executor.type to 'aider' if you want %r to do the "
-                "code edits too.",
-                model, model,
+                "executor.type=claude_agent_sdk with llm.model=%r and no "
+                "base_url override — the SDK speaks Anthropic's official "
+                "API which won't recognize that model. Falling back to "
+                "'claude-sonnet-4-6' on ANTHROPIC_API_KEY. If your "
+                "provider exposes an Anthropic-compatible endpoint "
+                "(like Z.AI's /api/anthropic surface for Claude Code "
+                "routing), set llm.base_url to that URL and we'll pass "
+                "it through via ANTHROPIC_BASE_URL.",
+                model,
             )
             model = "claude-sonnet-4-6"
             api_key_env = "ANTHROPIC_API_KEY"
+            base_url = None
+
         return ClaudeAgentExecutor(
             ClaudeAgentConfig(
                 model=model,
                 api_key_env=api_key_env,
+                base_url=base_url,
                 worktree_root=worktree_root,
             )
         )

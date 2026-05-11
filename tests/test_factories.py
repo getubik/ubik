@@ -42,15 +42,33 @@ def test_executor_factory_claude_agent():
     assert ex.config.worktree_root == cfg.executor.sandbox.worktree_dir
 
 
-def test_executor_factory_claude_agent_corrects_non_anthropic_model():
-    """If the user pointed llm.model at GLM (default), don't blindly send
-    it to the Anthropic-only SDK — fall back to the latest Sonnet."""
+def test_executor_factory_claude_agent_with_base_url_passes_model_through():
+    """If the user has a custom Anthropic-compatible base_url (e.g. Z.AI's
+    /api/anthropic surface for Claude Code routing), pass their model name
+    through — the proxy decides what to do with it. Don't silently swap."""
     cfg = UbikConfig()
     cfg.executor.type = "claude_agent_sdk"
-    # Default cfg.llm.model is "glm-5.1" — not an Anthropic id.
+    # Defaults already have llm.base_url = Z.AI + llm.model = glm-5.1
+    ex = executor_from_config(cfg)
+    assert isinstance(ex, ClaudeAgentExecutor)
+    assert ex.config.model == "glm-5.1"  # NOT swapped
+    assert ex.config.base_url == cfg.llm.base_url
+    assert ex.config.api_key_env == cfg.llm.api_key_env
+
+
+def test_executor_factory_claude_agent_without_base_url_swaps_non_anthropic_model():
+    """No base_url + non-Anthropic model = we're talking to real Anthropic
+    with a wrong model name. Force-swap to Sonnet so something works,
+    and log a warning (see fallback in executor_from_config)."""
+    cfg = UbikConfig()
+    cfg.executor.type = "claude_agent_sdk"
+    cfg.llm.base_url = None       # pure Anthropic
+    cfg.llm.model = "glm-5.1"     # but model is wrong for that
     ex = executor_from_config(cfg)
     assert isinstance(ex, ClaudeAgentExecutor)
     assert ex.config.model.startswith("claude-")
+    assert ex.config.base_url is None
+    assert ex.config.api_key_env == "ANTHROPIC_API_KEY"
 
 
 def test_executor_factory_unknown_type_raises():
