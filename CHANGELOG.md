@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.1.5 — First-time PyPI ship + critical bug fix in Claude SDK routing
+
+### Fixed
+- **CRITICAL**: `ClaudeAgentExecutor.run()` referenced a local `api_key`
+  variable that was never bound when `llm.base_url` was set. Anyone
+  trying the new `zai-claude` / `minimax-claude` routes (Z.AI's
+  `/api/anthropic` or MiniMax's `/anthropic` surfaces) would have hit
+  a `NameError` at runtime. The bug was masked because:
+  - the default flow (Aider executor) doesn't touch this code path,
+  - CI had been failing on the lint job since 0.1.0 (see below) so the
+    F821 that would have caught it never blocked a release.
+- `Path.home()` was being evaluated at import time in a default
+  argument of `TelegramBridge.poll_approvals` — moved into the body
+  with a `None` sentinel so per-user paths actually resolve at call.
+
+### CI
+- ruff lint + format CI was failing on every commit from 0.1.0 onward
+  (100 errors / 52 files unformatted against the pinned ruleset). The
+  `lint` job blocking `test` + `build` meant nothing in CI was
+  actually exercising the code. This release reformats the whole tree
+  to ruff's spec, fixes every remaining finding, and tunes
+  `pyproject.toml` for typer's argument-default idiom + a few
+  intentional editorial choices (en-dashes in researcher prompts).
+
+### Note
+This is the **first version actually published to PyPI**. 0.1.0
+through 0.1.4 lived only on GitHub + local dist artifacts. If you
+were running an editable install from main, the recommended upgrade
+path is to switch to `pip install --upgrade psssst` now that the
+package exists on PyPI.
+
 ## 0.1.4 — MiniMax Anthropic-compat preset + standard URL refresh
 
 ### Added
