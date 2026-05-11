@@ -45,6 +45,8 @@ scripts/*-secrets.sh
 research/notebook/
 research/transcripts/
 research/proposals/
+research/*/proposals/
+research/*/audit/
 !research/.gitkeep
 
 # Worktrees (executor sandbox)
