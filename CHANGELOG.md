@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.1.4 — MiniMax Anthropic-compat preset + standard URL refresh
+
+### Added
+- New wizard preset: **MiniMax · M2.7 via Claude Agent SDK** (key
+  `minimax-claude`). Points at `https://api.minimax.io/anthropic` —
+  MiniMax's Anthropic-compatible surface that mirrors Z.AI's
+  `/api/anthropic` trick. Pair with `executor.type: "claude_agent_sdk"`
+  in `ubik.yaml` for end-to-end MiniMax coding via Anthropic protocol.
+- Standard MiniMax preset now uses `https://api.minimax.io/v1`
+  (international domain) instead of the older `minimaxi.chat`.
+
+### Routing matrix after this release
+
+| Provider | OpenAI-compat preset | Anthropic-compat preset |
+|---|---|---|
+| Z.AI | `zai`, `zai-standard` | `zai-claude` (`/api/anthropic`) |
+| MiniMax | `minimax` | `minimax-claude` (`/anthropic`) |
+| Anthropic | — | `anthropic`, `anthropic-opus` |
+| Moonshot | `kimi` | (not exposed yet) |
+| OpenAI | `openai` | — |
+| Ollama | `ollama` | — |
+
+The Anthropic-compat presets all set both `ANTHROPIC_API_KEY` and
+`ANTHROPIC_AUTH_TOKEN` plus `API_TIMEOUT_MS=3000000` (per Z.AI's
+recipe), so they work with any Anthropic-protocol proxy that reads
+either auth header.
+
 ## 0.1.3 — Z.AI Claude Code routing matches the official recipe
 
 Followed [docs.z.ai/devpack/tool/claude](https://docs.z.ai/devpack/tool/claude)

@@ -91,7 +91,18 @@ PRESETS: list[ProviderPreset] = [
         key="minimax",
         label="MiniMax · M2.7",
         provider="openai_compatible",
-        base_url="https://api.minimaxi.chat/v1",
+        base_url="https://api.minimax.io/v1",
+        api_key_env="MINIMAX_API_KEY",
+        model="MiniMax-M2",
+    ),
+    ProviderPreset(
+        # MiniMax exposes an Anthropic-compatible surface so the
+        # claude_agent_sdk executor can route through MiniMax models
+        # the same way it does through Z.AI's /api/anthropic proxy.
+        key="minimax-claude",
+        label="MiniMax · M2.7 via Claude Agent SDK  (Anthropic-compat proxy, pairs with executor.type: claude_agent_sdk)",
+        provider="anthropic",
+        base_url="https://api.minimax.io/anthropic",
         api_key_env="MINIMAX_API_KEY",
         model="MiniMax-M2",
     ),
