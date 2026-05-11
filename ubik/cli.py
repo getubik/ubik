@@ -56,15 +56,27 @@ def run(
         "--notebook",
         help="Override notebook root (default: <repo>/research).",
     ),
-    poll_offset_file: Path = typer.Option(
-        Path("/var/lib/ubik/poll-offset"),
+    poll_offset_file: Optional[Path] = typer.Option(
+        None,
         "--poll-offset-file",
-        help="Where to persist the Telegram update_id between restarts.",
+        help=(
+            "Where to persist the Telegram update_id between restarts. "
+            "Default: <user-state-dir>/ubik/poll-offset (cross-platform)."
+        ),
     ),
     min_severity: str = typer.Option(
         "medium",
         "--min-severity",
         help="Floor severity for proposals (low/medium/high/critical).",
+    ),
+    dry_run: bool = typer.Option(
+        False,
+        "--dry-run",
+        help=(
+            "Run the audit cycle, persist proposals to disk, but do NOT "
+            "publish to the bridge or invoke the executor. Useful for "
+            "first-time setup."
+        ),
     ),
 ) -> None:
     """Start the autonomous Ubik daemon.
@@ -97,17 +109,24 @@ def run(
         format="%(asctime)s · %(name)s · %(levelname)s · %(message)s",
     )
 
+    from ubik.core.paths import default_poll_offset_path
+
+    resolved_offset = poll_offset_file or default_poll_offset_path()
+    resolved_offset.parent.mkdir(parents=True, exist_ok=True)
+
     daemon_cfg = DaemonConfig(
         daily_at=daily_at,
         pulse_minutes=pulse_minutes,
-        approval_poll_offset=str(poll_offset_file),
+        approval_poll_offset=str(resolved_offset),
         min_proposal_severity=min_severity,
+        dry_run=dry_run,
     )
 
+    mode_tag = " · [yellow]DRY-RUN[/yellow]" if dry_run else ""
     console.print(
         f"[dim]🤫 Ubik · daemon waking up · "
         f"watching [bold]{cfg.project.repo_path}[/bold] · "
-        f"daily audit @ [cyan]{daily_at}[/cyan][/dim]"
+        f"daily audit @ [cyan]{daily_at}[/cyan]{mode_tag}[/dim]"
     )
 
     try:
@@ -323,20 +342,62 @@ def audit(
 
 
 @app.command()
-def init() -> None:
-    """Scaffold a `ubik.yaml` in the current directory.
+def init(
+    repo: Path = typer.Option(
+        Path("."),
+        "--repo",
+        help="Repo to initialize ubik for (default: current directory).",
+    ),
+    force: bool = typer.Option(
+        False,
+        "--force",
+        help="Overwrite an existing ubik.yaml / .env.example.",
+    ),
+    write_env: bool = typer.Option(
+        True,
+        "--env/--no-env",
+        help="Also generate a .env.example next to ubik.yaml.",
+    ),
+) -> None:
+    """Interactive first-run wizard.
 
-    Copies the example config from the package and walks you through the
-    adapter choices interactively.
+    Walks you through provider choice, bridge wiring, GitHub repo, and
+    spend caps; then writes a fully-honest ubik.yaml + .env.example.
+    Every field round-trips through the loader.
     """
-    target = Path("ubik.yaml")
-    if target.exists():
-        console.print(f"[yellow]{target} already exists — refusing to overwrite[/yellow]")
+    from ubik.core.wizard import (
+        interactive_wizard,
+        render_env_example,
+        render_yaml,
+    )
+
+    repo = repo.resolve()
+    target = repo / "ubik.yaml"
+    env_target = repo / ".env.example"
+
+    if target.exists() and not force:
+        console.print(
+            f"[yellow]{target} already exists — pass --force to overwrite[/yellow]"
+        )
         raise typer.Exit(1)
 
-    # TODO(sprint-1): copy ubik.example.yaml from package data, ask
-    # interactive questions to fill in.
-    console.print("[yellow]init not implemented yet — sprint 1[/yellow]")
+    answers = interactive_wizard(default_repo=repo, console=console)
+    target.write_text(render_yaml(answers), encoding="utf-8")
+    console.print(f"\n[green]✅ Wrote[/green] [bold]{target}[/bold]")
+
+    if write_env:
+        if env_target.exists() and not force:
+            console.print(
+                f"[yellow]Skipping[/yellow] {env_target} (exists; --force to overwrite)"
+            )
+        else:
+            env_target.write_text(render_env_example(answers), encoding="utf-8")
+            console.print(f"[green]✅ Wrote[/green] [bold]{env_target}[/bold]")
+
+    console.print(
+        "\n[dim]Next: copy .env.example → .env, fill in the secrets, then[/dim] "
+        "[cyan]ubik run --dry-run[/cyan][dim] for a no-op smoke test.[/dim]"
+    )
 
 
 def main() -> None:

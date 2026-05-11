@@ -69,6 +69,14 @@ class OrchestratorConfig:
     """When True, publish() will accept DRAFT proposals (typical).
     Set False if a separate process emits & a different one publishes."""
 
+    # Per-task executor defaults (cherry-picked from ExecutorTask). Daemon
+    # fills these from ubik.yaml (executor.sandbox + verifier.test_command).
+    # Without this hook the orchestrator handed the executor a hard-coded
+    # 5USD/15min budget and no test command — regardless of config.
+    default_test_command: str | None = None
+    default_cost_cap_usd: float = 5.0
+    default_time_cap_seconds: int = 900
+
 
 class Orchestrator:
     """The conductor. Owns no LLM, owns the proposal lifecycle."""
@@ -183,6 +191,9 @@ class Orchestrator:
             title=proposal.title,
             description=proposal.summary,
             plan=proposal.plan,
+            test_command=self.config.default_test_command,
+            cost_cap_usd=self.config.default_cost_cap_usd,
+            time_cap_seconds=self.config.default_time_cap_seconds,
         )
 
         logger.info("Executing proposal %s via %s", proposal.id[:8], self.executor.name)

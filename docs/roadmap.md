@@ -50,3 +50,28 @@
 - Cost analytics + budget enforcement
 - Plugin marketplace for niche analyzers
 - Training-free fine-tuning of researcher prompts via notebook history
+
+---
+
+## Config schema — supported in 0.1.0 vs roadmap
+
+The `ubik/core/config.py` loader is the canonical contract; only fields
+listed in [the honest example](../ubik.example.yaml) round-trip. The
+following blocks were advertised in pre-0.1.0 example configs but are
+**not wired** today and live here as roadmap pointers:
+
+| Roadmap block | Supersedes which sprint | Notes |
+|---|---|---|
+| `project.shared_namespace` | Sprint 4 (multi-project notebook search) | Postgres + pgvector backend required |
+| `researcher.llm.advisor` | Future | Anthropic-style escalation for high-stakes calls |
+| `researcher.scope` (web_search / arxiv / hackernews / github_issues / competitor_urls) | Sprint 5+ | Each subscope ships with its own adapter |
+| `executor.sandbox.network.{allowed_domains,denied_domains,allow_managed_only}` | After Slice 3 | Native to claude-agent-sdk; Aider needs a wrapper |
+| `bridge.mcp_apps` | After Slice 3 | MCP Apps SEP-1865 inline approval surface |
+| `verifier.pr.provider`: `"bitbucket"` / `"gitea"` | Sprint 5+ | (`"github"` and `"gitlab"` ship in 0.1.0) |
+| `notebook.storage: "postgres"` + `notebook.postgres_url_env` | Sprint 4 | Cross-project semantic search |
+| `notebook.retention_days` | Sprint 5+ | Currently the notebook grows forever |
+| `mcp.*` | Partial — `ubik mcp` server runs stdio only; HTTP/OAuth/server-card are not honored from YAML | |
+| `observability.*` | Sprint 5+ | OTel spans emitted unconditionally; backend selection via env for now |
+
+If you need one of these, open an issue describing the use case — the
+priorities above can shift based on demand.

@@ -35,10 +35,11 @@ pip install ubik
 
 # In any repo:
 cd my-repo
-cp $(python -m ubik path)/examples/minimal-config.yaml ubik.yaml
-# edit ubik.yaml — point it at your LLM, your Telegram, your repo
+ubik init               # interactive wizard → ubik.yaml + .env.example
+cp .env.example .env    # fill in API keys + Telegram bot token
 
-ubik run                # autonomous daemon
+ubik run --dry-run      # smoke test: audits + persists, no notifications
+ubik run                # autonomous daemon for real
 # or
 ubik mcp                # MCP server (stdio) — for Claude Desktop / Cursor
 # or
@@ -46,6 +47,14 @@ ubik audit              # one-shot codebase audit, dump report
 ```
 
 That's it. Ubik is now resident.
+
+The `ubik init` wizard ships with provider presets for **Z.AI / GLM-5.1**
+(default — free with the annual plan), **Anthropic**, **OpenAI**, and
+**Ollama** (local). Every field in the generated `ubik.yaml` is honored
+by the loader — no config knob is decorative. Roadmap-only fields (web
+search, Slack bridge, GitLab verifier, Postgres notebook) are documented
+in [`docs/roadmap.md`](docs/roadmap.md) and intentionally absent from
+the example.
 
 ---
 

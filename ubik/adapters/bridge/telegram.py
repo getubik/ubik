@@ -440,18 +440,30 @@ def telegram_from_env(
 
 
 def telegram_from_config(cfg: dict[str, Any]) -> TelegramBridge:
-    """Build a TelegramBridge from the `bridge` block of ubik.yaml."""
+    """Build a TelegramBridge from the `bridge` block of ubik.yaml.
+
+    Chat-id resolution: the YAML's ``approver_chat_ids`` list wins. If
+    empty, fall back to the env var named by ``chat_id_env`` (default
+    ``TELEGRAM_CHAT_ID``) — comma-separated int(s).
+    """
     token_env = cfg.get("token_env", "TELEGRAM_BOT_TOKEN")
     token = os.environ.get(token_env)
     if not token:
         raise RuntimeError(f"missing env var: {token_env}")
 
-    raw_ids = cfg.get("approver_chat_ids", [])
-    if not raw_ids:
+    chat_ids = [int(x) for x in (cfg.get("approver_chat_ids") or [])]
+    if not chat_ids:
+        chat_id_env = cfg.get("chat_id_env", "TELEGRAM_CHAT_ID")
+        raw = os.environ.get(chat_id_env, "").strip()
+        if raw:
+            chat_ids = [int(x.strip()) for x in raw.split(",") if x.strip()]
+
+    if not chat_ids:
         raise RuntimeError(
-            "bridge.approver_chat_ids is empty — Ubik has nobody to whisper to"
+            "bridge.approver_chat_ids is empty and no fallback in "
+            f"{cfg.get('chat_id_env', 'TELEGRAM_CHAT_ID')!r} — "
+            "Ubik has nobody to whisper to"
         )
-    chat_ids = [int(x) for x in raw_ids]
 
     parse_mode = cfg.get("parse_mode", "MarkdownV2")
     return TelegramBridge(

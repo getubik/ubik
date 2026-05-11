@@ -27,15 +27,17 @@ from ubik.adapters.bridge import (
     Bridge,
     NotifyMessage,
     Severity,
+    bridge_from_config,
     telegram_from_env,
 )
-from ubik.adapters.executor import AiderConfig, AiderExecutor, Executor
+from ubik.adapters.executor import Executor, executor_from_config
 from ubik.adapters.llm import LLMAdapter, llm_from_config
-from ubik.adapters.verifier import GitHubVerifier, Verifier
+from ubik.adapters.verifier import Verifier, verifier_from_config
 from ubik.core.config import UbikConfig
 from ubik.core.notebook import Notebook
-from ubik.core.orchestrator import Orchestrator
+from ubik.core.orchestrator import Orchestrator, OrchestratorConfig
 from ubik.core.proposal import ProposalStore
+from ubik.core.proposal_counter import DailyProposalCounter
 from ubik.core.proposal_builder import findings_to_proposals
 from ubik.core.researcher import run_audit
 from ubik.core.scheduler import Scheduler
@@ -58,8 +60,14 @@ class DaemonConfig:
     min_proposal_severity: str = "medium"
     """Floor for what makes it to a proposal — 'low' = noisy, 'high' = quiet."""
 
-    approval_poll_offset: str = "/var/lib/ubik/poll-offset"
-    """File where we stash the last Telegram update_id between restarts."""
+    approval_poll_offset: str = ""
+    """File where we stash the last Telegram update_id between restarts.
+    Empty = use platform user-state dir (resolved in __post_init__-style at use site)."""
+
+    dry_run: bool = False
+    """If True, the daemon runs the audit + persists proposals + extracts
+    findings, but does NOT publish them to the bridge or hand them to the
+    executor. Useful for first-time setup ('show me what you'd do')."""
 
 
 class Daemon:
@@ -82,28 +90,24 @@ class Daemon:
         # Build LLM (BYOM via litellm_adapter)
         self.llm: LLMAdapter = llm_from_config(self.cfg.llm.to_litellm_dict())
 
-        # Bridge — Telegram from env (Slack/Discord adapters land later)
+        # Bridge — resolved from cfg.bridge.type via the factory.
+        # bridge_from_config falls back to env vars for chat ids when
+        # approver_chat_ids is empty in YAML, so the wizard's "fill in
+        # later" flow works.
         try:
-            self.bridge: Bridge = telegram_from_env()
+            self.bridge: Bridge = bridge_from_config(self.cfg)
         except RuntimeError as e:
             raise RuntimeError(
                 f"Daemon needs a bridge configured. {e}. "
-                "Set TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID, or extend the daemon "
-                "to a different adapter."
+                "Check ubik.yaml's `bridge` block and the env vars it "
+                "names (token_env / chat_id_env)."
             ) from e
 
-        # Executor — Aider by default
-        self.executor: Executor = AiderExecutor(
-            AiderConfig(
-                base_url=self.cfg.llm.base_url or "https://api.z.ai/api/coding/paas/v4",
-                api_key_env=self.cfg.llm.api_key_env,
-                model=f"openai/{self.cfg.llm.model}",
-            )
-        )
-
-        # Verifier — GitHub. Optional; missing token just means PRs won't open
-        # automatically and the daemon stops at READY_FOR_PR (you push manually).
-        self.verifier: Verifier = GitHubVerifier()
+        # Executor + Verifier — resolved from config too. Sandbox knobs
+        # (worktree dir) come from the executor block; cost/time caps
+        # live on ExecutorTask and are wired via OrchestratorConfig below.
+        self.executor: Executor = executor_from_config(self.cfg)
+        self.verifier: Verifier = verifier_from_config(self.cfg)
 
         self.orchestrator = Orchestrator(
             store=self.store,
@@ -111,7 +115,16 @@ class Daemon:
             bridge=self.bridge,
             executor=self.executor,
             verifier=self.verifier,
+            config=OrchestratorConfig(
+                notebook_root=notebook_root,
+                default_test_command=self.cfg.verifier.test_command,
+                default_cost_cap_usd=self.cfg.executor.sandbox.cost_cap_usd,
+                default_time_cap_seconds=self.cfg.executor.sandbox.time_cap_minutes * 60,
+            ),
         )
+
+        # Proposal-per-day counter — file-backed, lives next to proposals.
+        self.proposal_counter = DailyProposalCounter(notebook_root)
 
         self.scheduler = Scheduler()
         self._stop = asyncio.Event()
@@ -207,10 +220,35 @@ class Daemon:
             len(findings), len(proposals), self.daemon_cfg.min_proposal_severity,
         )
 
+        # Daily proposal cap — prevent a runaway audit from blasting the
+        # operator's Telegram with 50 proposals at once. The counter is
+        # filesystem-backed so it survives restarts.
+        cap = self.cfg.cost.max_proposals_per_day
+        used_today = self.proposal_counter.count_today()
+        budget = max(0, cap - used_today)
+        if len(proposals) > budget:
+            logger.warning(
+                "Daily proposal cap reached: %d already published today, "
+                "cap=%d, dropping %d of %d new proposals",
+                used_today, cap, len(proposals) - budget, len(proposals),
+            )
+            await self._post_cap_warning(used_today, cap, dropped=len(proposals) - budget)
+            proposals = proposals[:budget]
+
         for p in proposals:
             self.store.save(p)
+
+            if self.daemon_cfg.dry_run:
+                logger.info(
+                    "[dry-run] Proposal %s saved to disk; bridge.notify and "
+                    "orchestrator.publish skipped.",
+                    p.id[:8],
+                )
+                continue
+
             try:
                 await self.orchestrator.publish(p.id)
+                self.proposal_counter.increment()
             except Exception as e:
                 logger.error("Publish failed for proposal %s: %s", p.id[:8], e, exc_info=True)
 
@@ -255,6 +293,24 @@ class Daemon:
                 body_markdown="Pssst. I'm going quiet for now.",
                 severity=Severity.LOW,
                 tags=["daemon", "lifecycle"],
+            ))
+        except Exception:
+            pass
+
+    async def _post_cap_warning(self, used: int, cap: int, *, dropped: int) -> None:
+        """One-line nudge when the daily proposal cap kicks in."""
+        if self.daemon_cfg.dry_run:
+            return
+        try:
+            await self.bridge.notify(NotifyMessage(
+                title=f"Ubik · daily proposal cap reached · {self.cfg.project.name or 'unknown'}",
+                body_markdown=(
+                    f"Already published **{used}** today (cap **{cap}**). "
+                    f"Dropped **{dropped}** new proposals from this cycle. "
+                    "Raise `cost.max_proposals_per_day` in `ubik.yaml` to lift."
+                ),
+                severity=Severity.MEDIUM,
+                tags=["daemon", "cost-cap"],
             ))
         except Exception:
             pass

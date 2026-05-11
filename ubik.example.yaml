@@ -1,168 +1,79 @@
 # ─────────────────────────────────────────────────────────────────────
-# Psssst! Ubik configuration
+# Psssst! Ubik configuration — the honest reference.
 #
-# Copy this file to `ubik.yaml` in any repo. Adjust the four adapter
-# blocks (researcher, executor, bridge, verifier) and `ubik run`.
+# Every field below round-trips through ubik/core/config.py. Run
+# `ubik init` for an interactive wizard that produces an equivalent
+# file customized to your repo + provider choice.
 #
-# Every adapter is pluggable — swap providers without touching code.
-# Stack reflects mid-2026 best-of-breed; see docs/stack.md.
+# Roadmap-only knobs (advisor model, scope filters, sandbox network
+# allowlist, MCP Apps, observability backends, postgres notebook) are
+# documented in docs/roadmap.md and intentionally absent from here.
 # ─────────────────────────────────────────────────────────────────────
 
 project:
   name: "my-project"
-  repo_path: "."                       # the codebase Ubik watches
+  repo_path: "."
   default_branch: "main"
-  # Cross-project knowledge transfer key — Ubik can cite findings from
-  # other projects sharing the same notebook backend (see `notebook` block).
-  shared_namespace: "default"
 
 # ── Researcher: who reads the world ─────────────────────────────────
 researcher:
   llm:
-    # Default: GLM-5.1 via Z.AI (SOTA on SWE-Bench Pro 2026, free with
-    # GLM Coding Plan annual subscription). Swap for any litellm-supported
-    # endpoint: openai, anthropic, gemini, bedrock, ollama, groq, …
+    # Default: GLM-5.1 via Z.AI (#1 SWE-Bench Pro, free with annual plan).
+    # Swap any litellm-supported endpoint: openai, anthropic, gemini,
+    # bedrock, ollama, groq, …
     provider: "openai_compatible"
     base_url: "https://api.z.ai/api/coding/paas/v4"
     api_key_env: "Z_AI_API_KEY"
     model: "glm-5.1"
-    thinking: true                     # extended-thinking on supported models
-    max_tokens: 32000
-
-    # Optional — for heavy reasoning, escalate to a stronger model
-    # (Anthropic's "advisor tool" pattern). When the agent flags a
-    # decision as high-stakes, it consults this model before committing.
-    # Setting `null` disables the escalation path.
-    advisor:
-      model: null                       # e.g. "claude-opus-4-7"
-      base_url: null
-      api_key_env: null
+    thinking: true
+    max_tokens: 8000
 
   schedule:
-    daily_at: "09:00"                  # local time
-    weekly_at: "monday 10:00"
-    pulse_every_minutes: 60            # cheap anomaly sweep
-    monthly_on: "first-monday 09:00"
-
-  scope:
-    # What the agent is allowed to look at
-    web_search: true                   # via Serper, DuckDuckGo, or self-hosted SearxNG
-    arxiv: true
-    hackernews: true
-    github_issues: true
-    competitor_urls:
-      - "https://wirecutter.com"
-      - "https://rtings.com"
+    daily_at: "09:00"                  # local time HH:MM
+    pulse_every_minutes: 0             # 0 disables the pulse cycle
 
 # ── Executor: who writes the fix ────────────────────────────────────
 executor:
-  type: "claude_agent_sdk"             # alternatives: aider, openhands, custom
-  llm:
-    # Claude Agent SDK with a custom base_url routes through Z.AI.
-    # GLM-5.1 leads SWE-Bench Pro (April 2026) — top-tier coding capability
-    # at zero marginal cost on the unlimited plan.
-    base_url: "https://api.z.ai/api/coding/paas/v4"
-    api_key_env: "Z_AI_API_KEY"
-    model: "glm-5.1"
-    effort: "high"                     # claude-agent-sdk knob (low/medium/high/xhigh)
-
+  type: "aider"                        # only adapter wired in 0.1.0
   sandbox:
     worktree_dir: "./.ubik-worktrees"  # isolated git worktrees per task
-    cost_cap_usd: 5                    # hard kill switch per task
-    time_cap_minutes: 15
-
-    # Sandbox network controls (claude-agent-sdk native; aider/openhands
-    # respect via subprocess env). Default-deny, allowlist-add.
-    network:
-      allowed_domains:
-        - "github.com"
-        - "pypi.org"
-        - "registry.npmjs.org"
-        - "api.z.ai"
-      denied_domains: []
-      allow_managed_only: false
-
+    cost_cap_usd: 5.0                  # per-task hard kill switch
+    time_cap_minutes: 15               # per-task hard kill switch
   guardrails:
     cannot_push_to: ["main", "master", "production"]
     require_tests: true
-    require_pr_review: true            # final merge needs human approval
+    require_pr_review: true
 
 # ── Bridge: how Ubik talks to you ───────────────────────────────────
 bridge:
-  type: "telegram"
+  type: "telegram"                     # only adapter wired in 0.1.0
   token_env: "TELEGRAM_BOT_TOKEN"
+  chat_id_env: "TELEGRAM_CHAT_ID"
   approver_chat_ids:                   # only these chats can approve
-    - 123456789
+    # - 123456789
   rate_limit:
     max_pushes_per_hour: 5
     cooldown_minutes_per_proposal: 60
 
-  # Optional secondary bridge — MCP Apps. Lets approvers tap directly
-  # inside Claude Desktop / Cursor without leaving the IDE. See
-  # SEP-1865 in the MCP spec (formalized early 2026).
-  mcp_apps:
-    enabled: false                     # opt-in
-    transport: "streamable-http"
-
 # ── Verifier: who checks the fix ────────────────────────────────────
 verifier:
-  test_command: "pytest -q"
-  build_command: null                  # e.g. "npm run build" for JS projects
+  test_command: "pytest -q"            # run inside the executor worktree
+  build_command: null                  # e.g. "npm run build"
   smoke_command: null                  # post-deploy hit-the-endpoint check
-
   pr:
-    provider: "github"
-    repo: "getubik/ubik"
+    provider: "github"                 # only provider wired in 0.1.0
+    repo: ""                           # e.g. "getubik/ubik"; auto-detected if blank
     base_branch: "main"
-    auto_create: true                  # create PR after executor finishes
+    auto_create: true
 
 # ── Notebook: where Ubik remembers ──────────────────────────────────
 notebook:
-  storage: "filesystem"                # alternatives: postgres (with pgvector)
-  path: "./research"                   # markdown + manifest.json archive
-  retention_days: 365
-
-  # When `storage: "postgres"`, semantic search across past notebook
-  # entries is enabled (multi-project insight). Connection url is
-  # picked from env to keep secrets out of git.
-  postgres_url_env: "UBIK_POSTGRES_URL"
-
-# ── MCP server (when running `ubik mcp`) ───────────────────────────
-mcp:
-  transport: "stdio"                   # stdio (default) | streamable-http
-  http:
-    host: "127.0.0.1"
-    port: 3000
-    # OAuth 2.1 + PKCE per the 2025-06-18 spec. Required for any
-    # remote-reachable MCP server.
-    oauth:
-      enabled: false                   # flip on when exposing publicly
-      authorization_server: ""
-
-  # Server Card (.well-known/mcp-server-card) for registry/crawler
-  # discovery. Smithery, the MCP registry, and Cursor all read this.
-  server_card:
-    enabled: true
-    public_name: "ubik"
-    title: "Ubik"
-    description: "An AI resident engineer for your codebase. (Pssst!)"
-    homepage: "https://psssst.dev"
-
-# ── Observability ──────────────────────────────────────────────────
-observability:
-  # OpenTelemetry GenAI semantic conventions. Backend is your choice —
-  # Langfuse (default), Phoenix, Jaeger, or any OTLP endpoint.
-  enabled: true
-  exporter: "otlp_http"
-  endpoint: "http://localhost:3000/api/public/otel"
-  api_key_env: "LANGFUSE_PUBLIC_KEY"   # or whatever your backend uses
-  service_name: "ubik"
+  storage: "filesystem"                # postgres backend on the roadmap
+  path: "./research"
 
 # ── Cost ceiling — global ───────────────────────────────────────────
 cost:
-  daily_usd_cap: 15
+  daily_usd_cap: 15.0                  # informational; Z.AI plan is unlimited
   alert_at_percent: 80
-  # When using the GLM Coding Plan unlimited tier, cost is informational
-  # only (Z.AI doesn't bill per-token on the annual plan). Setting
-  # `track_only: true` removes the kill switch behavior.
   track_only: false
+  max_proposals_per_day: 20            # ENFORCED: drops new proposals over cap

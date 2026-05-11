@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel in-progress runs when a newer commit lands on the same ref —
+# saves CI minutes on rapid push flurries (Ubik's auto/<id> branches
+# generate a lot of these).
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: ruff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Install ruff
+        run: uv tool install ruff
+      - name: Lint
+        run: ruff check .
+      - name: Format check
+        run: ruff format --check .
+
+  test:
+    name: pytest · py${{ matrix.python }} · ${{ matrix.os }}
+    needs: lint
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+        os: [ubuntu-latest]
+        include:
+          # Cross-platform sanity on a single python version — the
+          # paths.py + proposal_counter.py code paths differ per OS.
+          - python: "3.12"
+            os: macos-latest
+          - python: "3.12"
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          python-version: ${{ matrix.python }}
+      - name: Install package + dev extras
+        run: uv pip install --system -e ".[dev,telegram,mcp]"
+      - name: Run tests with coverage
+        run: pytest --cov=ubik --cov-report=term-missing --cov-report=xml
+      - name: Upload coverage artifact
+        if: matrix.python == '3.12' && matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: warn
+
+  build:
+    name: build wheel + sdist
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - name: Build
+        run: uv build
+      - name: Twine check
+        run: |
+          uv tool install twine
+          twine check dist/*
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
