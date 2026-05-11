@@ -32,14 +32,24 @@ class ProviderPreset:
 
 
 PRESETS: list[ProviderPreset] = [
+    # ── Z.AI ────────────────────────────────────────────────────────────
     ProviderPreset(
         key="zai",
-        label="Z.AI · GLM-5.1 (free with annual plan, #1 SWE-Bench Pro)",
+        label="Z.AI · GLM Coding Plan  ★ recommended (free with annual sub, SOTA SWE-Bench Pro)",
         provider="openai_compatible",
         base_url="https://api.z.ai/api/coding/paas/v4",
         api_key_env="Z_AI_API_KEY",
         model="glm-5.1",
     ),
+    ProviderPreset(
+        key="zai-standard",
+        label="Z.AI · GLM (standard API, pay-per-token)",
+        provider="openai_compatible",
+        base_url="https://api.z.ai/api/paas/v4",
+        api_key_env="Z_AI_API_KEY",
+        model="glm-4.6",
+    ),
+    # ── Anthropic ──────────────────────────────────────────────────────
     ProviderPreset(
         key="anthropic",
         label="Anthropic · Claude Sonnet 4.6",
@@ -49,8 +59,34 @@ PRESETS: list[ProviderPreset] = [
         model="claude-sonnet-4-6",
     ),
     ProviderPreset(
+        key="anthropic-opus",
+        label="Anthropic · Claude Opus 4.7  (1M context)",
+        provider="anthropic",
+        base_url=None,
+        api_key_env="ANTHROPIC_API_KEY",
+        model="claude-opus-4-7",
+    ),
+    # ── Chinese frontier ───────────────────────────────────────────────
+    ProviderPreset(
+        key="kimi",
+        label="Moonshot · Kimi K2.6  (long-context reasoning)",
+        provider="openai_compatible",
+        base_url="https://api.moonshot.ai/v1",
+        api_key_env="MOONSHOT_API_KEY",
+        model="kimi-k2",
+    ),
+    ProviderPreset(
+        key="minimax",
+        label="MiniMax · M2.7",
+        provider="openai_compatible",
+        base_url="https://api.minimaxi.chat/v1",
+        api_key_env="MINIMAX_API_KEY",
+        model="MiniMax-M2",
+    ),
+    # ── Western fallbacks ──────────────────────────────────────────────
+    ProviderPreset(
         key="openai",
-        label="OpenAI · gpt-4o",
+        label="OpenAI · GPT-4o",
         provider="openai",
         base_url=None,
         api_key_env="OPENAI_API_KEY",
@@ -58,7 +94,7 @@ PRESETS: list[ProviderPreset] = [
     ),
     ProviderPreset(
         key="ollama",
-        label="Ollama · local (llama3.1)",
+        label="Ollama · local (llama3.1) — no API key needed",
         provider="openai_compatible",
         base_url="http://localhost:11434/v1",
         api_key_env="OLLAMA_API_KEY",  # value is irrelevant; ollama ignores

@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.1.1 — Expanded wizard provider presets
+
+### Added
+- `ubik init` wizard now ships **8 provider presets** (was 4):
+  - **Z.AI · GLM Coding Plan** ★ recommended — free with annual sub, SOTA SWE-Bench Pro (default)
+  - **Z.AI · GLM** — standard API, pay-per-token (`api/paas/v4` instead of `api/coding/paas/v4`)
+  - **Anthropic · Claude Sonnet 4.6**
+  - **Anthropic · Claude Opus 4.7** (1M context)
+  - **Moonshot · Kimi K2.6** — long-context reasoning
+  - **MiniMax · M2.7**
+  - **OpenAI · GPT-4o**
+  - **Ollama · local** (llama3.1, no API key)
+
+All eight round-trip through the loader (parametrized wizard test).
+Model IDs and endpoints are starting points — users can edit
+`ubik.yaml` after the wizard if a provider has renamed since release.
+
 ## 0.1.0 — First public release
 
 > **PyPI distribution name is `psssst`** (not `ubik`). The `ubik` name
