@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.getubik/ubik",
+  "description": "Psssst! — an AI resident engineer for your codebase. Audits the repository (researcher LLM defaults to GLM-5.1 via Z.AI, also speaks Anthropic / OpenAI / Kimi / MiniMax / Ollama), surfaces stale code, missing tests, inconsistent patterns and security smells into a structured markdown report, and keeps a searchable notebook of past findings. Pair the MCP surface with the autonomous daemon (`ubik run`) to also get Telegram-approved fixes shipped through Aider or the Claude Agent SDK.",
+  "repository": {
+    "url": "https://github.com/getubik/ubik",
+    "source": "github"
+  },
+  "version": "0.1.6",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "identifier": "psssst",
+      "version": "0.1.6",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
